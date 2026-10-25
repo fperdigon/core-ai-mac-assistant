@@ -39,7 +39,7 @@ public struct TelegramAlertFormatter: TelegramAlertFormatting {
         case .critical: level = "Critical"
         }
         let machine = includeMachineName.map { " (\($0))" } ?? ""
-        let names = (blockers ?? []).filter { !$0.isEmpty }
+        let names = (blockers ?? []).compactMap { SleepBlockerSummary.displayName(for: $0) }
         let keepingAwake = names.isEmpty ? "an active sleep assertion" : names.joined(separator: ", ")
         let remaining = StatusLineFormatter.alertEstimate(estimate)
         return "\(level): battery at \(alert.batteryPercent)%\(machine)\(remaining). Keeping the Mac awake: \(keepingAwake)."

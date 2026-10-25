@@ -22,7 +22,11 @@ public final class AssistantEngine {
     public var onChange: (@MainActor @Sendable () -> Void)?
 
     public var statusText: String {
-        StatusLineFormatter.format(power: power, estimate: batteryEstimate, blockers: blockers)
+        StatusLineFormatter.format(power: power, estimate: batteryEstimate)
+    }
+
+    public var blockersText: String? {
+        StatusLineFormatter.blockersLine(blockers: blockers)
     }
 
     public private(set) var batteryEstimate: BatteryEstimate
@@ -103,10 +107,8 @@ public final class AssistantEngine {
     public func refreshStatusSnapshot() {
         power = powerMonitor.current
         batteryEstimate = batteryEstimator.currentEstimate()
-        let names = assertionProvider.currentAssertions().map {
-            isOwnAssertion($0) ? AppInfo.name : $0.processName
-        }
-        blockers = Array(Set(names)).sorted()
+        let assertions = assertionProvider.currentAssertions()
+        blockers = SleepBlockerSummary.names(assertions: assertions, ownPID: ownPID)
     }
 
     public func stop() {
@@ -197,6 +199,11 @@ public final class AssistantEngine {
                 ))
                 controller.deactivate()
                 await notifier.deliver(composer.compose(action: action))
+            case .notifyDetected(let classified), .notifyReportOnly(let classified):
+                let names = SleepBlockerSummary.names(assertions: [classified.assertion], ownPID: ownPID)
+                if !names.isEmpty {
+                    await notifier.deliver(composer.compose(action: action))
+                }
             default:
                 await notifier.deliver(composer.compose(action: action))
             }
@@ -204,7 +211,7 @@ public final class AssistantEngine {
         let remaining = assertions.filter {
             !removedPIDs.contains($0.pid) && (!isOwnAssertion($0) || controller.isActive)
         }
-        blockers = Array(Set(remaining.map { isOwnAssertion($0) ? AppInfo.name : $0.processName })).sorted()
+        blockers = SleepBlockerSummary.names(assertions: remaining, ownPID: ownPID)
         if let alert = alerts.evaluate(power: power, blockerActive: !remaining.isEmpty, now: now) {
             await notifier.deliver(composer.compose(alert: alert, blockers: blockers, estimate: batteryEstimate))
         }

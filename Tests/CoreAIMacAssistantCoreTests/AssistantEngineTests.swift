@@ -106,7 +106,8 @@ private struct EngineFixture {
     let terminator: EngineTerminator
     let engine: AssistantEngine
 
-    init(source: PowerSource = .battery, percent: Int? = 80, console: Bool = false, userID: UInt32? = 42) {
+    init(source: PowerSource = .battery, percent: Int? = 80, console: Bool = false, userID: UInt32? = 42,
+         policy: any PolicyEvaluating = PolicyEngine()) {
         power = FakePowerMonitor(current: enginePower(source, percent))
         controller = CaffeinateController(holder: holder, scheduler: FakeKeepAwakeScheduler(),
                                           store: FakeKeepAwakeStateStore())
@@ -119,7 +120,8 @@ private struct EngineFixture {
         ])
         engine = AssistantEngine(
             powerMonitor: power, assertionProvider: assertions,
-            classifier: ProcessClassifier(processTable: table), caffeinateController: controller,
+            classifier: ProcessClassifier(processTable: table), policyEngine: policy,
+            caffeinateController: controller,
             channels: [notices], terminator: terminator, settings: settings,
             clock: clock, tickScheduler: ticks, ownPID: 99, currentUserID: 42,
             batteryEstimator: EmptyBatteryEstimator()
@@ -162,7 +164,8 @@ private struct EngineFixture {
     fixture.controller.activate()
     await fixture.engine.start()
     #expect(fixture.controller.isActive)
-    #expect(fixture.engine.blockers == [AppInfo.name])
+    #expect(fixture.engine.blockers.isEmpty)
+    #expect(fixture.engine.blockersText == nil)
     fixture.power.push(enginePower(.battery, 15))
     await fixture.engine.evaluate()
     #expect(!fixture.controller.isActive)
@@ -298,4 +301,55 @@ private struct EngineFixture {
 
 private struct EmptyBatteryEstimator: BatteryEstimating {
     func currentEstimate() -> BatteryEstimate { BatteryEstimate() }
+}
+
+private final class RecordingDisplayPolicy: PolicyEvaluating, @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [ClassifiedAssertion] = []
+    var assertions: [ClassifiedAssertion] { lock.withLock { values } }
+    func evaluate(power: PowerState, assertions: [ClassifiedAssertion], now: Date) -> [PolicyAction] {
+        lock.withLock { values = assertions }
+        return []
+    }
+}
+
+@Test @MainActor func engineCleansDisplayAndAlertsButPolicyReceivesEveryAssertion() async {
+    let policy = RecordingDisplayPolicy()
+    let fixture = EngineFixture(policy: policy)
+    let assertions = [
+        engineAssertion(pid: 99, name: AppInfo.name),
+        engineAssertion(pid: 2, name: "powerd"),
+        engineAssertion(pid: 3, name: "coreaudiod"),
+        engineAssertion(pid: 4, name: "Claude"),
+    ]
+    fixture.assertions.set(assertions)
+    fixture.engine.refreshStatusSnapshot()
+    #expect(fixture.engine.blockersText == "Also keeping awake: Claude, audio playback")
+    await fixture.engine.start()
+    #expect(policy.assertions.map(\.assertion) == assertions)
+    #expect(fixture.engine.blockers == ["Claude", "audio playback"])
+    let alert = fixture.notices.notices.first { $0.kind == .batteryAlert }
+    #expect(alert?.body == "Battery at 80%. Keeping the Mac awake: Claude, audio playback.")
+    fixture.assertions.set(Array(assertions.prefix(2)))
+    fixture.clock.advance(600)
+    await fixture.ticks.fire()
+    #expect(fixture.engine.blockersText == nil)
+    #expect(policy.assertions.count == 2)
+    // Alert eligibility still uses raw assertions, even when all display names are hidden.
+    #expect(fixture.notices.notices.filter { $0.kind == .batteryAlert }.count == 2)
+    fixture.engine.stop()
+}
+
+@Test @MainActor func engineDetectionMessagesHideInternalsAndMapAudioPlayback() async {
+    let fixture = EngineFixture()
+    fixture.assertions.set([
+        engineAssertion(pid: 99, name: AppInfo.name),
+        engineAssertion(pid: 2, name: "powerd"),
+        engineAssertion(pid: 3, name: "coreaudiod"),
+    ])
+    await fixture.engine.start()
+    let detections = fixture.notices.notices.filter { $0.kind == .keepAwakeDetected }
+    #expect(detections.count == 1)
+    #expect(detections.first?.body == "audio playback (PID 3) is keeping the Mac awake. Report only.")
+    fixture.engine.stop()
 }

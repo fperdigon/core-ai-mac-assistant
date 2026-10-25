@@ -42,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var engine: AssistantEngine?
     private var settingsWindow: SettingsWindowController?
     private let statusLine = NSMenuItem(title: "Reading power state…", action: nil, keyEquivalent: "")
+    private let blockersLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let keepAwake = NSMenuItem(title: "Keep awake", action: nil, keyEquivalent: "")
     private let authorization = NSMenuItem(title: "Notifications: checking…", action: nil, keyEquivalent: "")
 
@@ -53,11 +54,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             channels: [localNotifier, TelegramNotifier(settings: settings, secrets: KeychainSecretStore())],
             terminator: SignalProcessTerminator(), settings: settings
         )
-        if CommandLine.arguments.contains("--print-status") {
-            engine.refreshStatusSnapshot()
-            print(engine.statusText)
-            exit(0)
-        }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         let image = NSImage(systemSymbolName: "cup.and.saucer", accessibilityDescription: AppInfo.name)
         image?.isTemplate = true
@@ -68,6 +64,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
         statusLine.isEnabled = false
         menu.addItem(statusLine)
+        blockersLine.isEnabled = false
+        blockersLine.isHidden = true
+        menu.addItem(blockersLine)
         keepAwake.target = self
         keepAwake.action = #selector(toggleKeepAwake)
         menu.addItem(keepAwake)
@@ -118,6 +117,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func refreshStatus() {
         statusLine.title = engine?.statusText ?? "Reading power state…"
+        let blockers = engine?.blockersText
+        blockersLine.title = blockers ?? ""
+        blockersLine.isHidden = blockers == nil
         keepAwake.state = controller.isActive ? .on : .off
     }
 
@@ -154,6 +156,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             NSWorkspace.shared.open(url)
         }
     }
+}
+
+// Read-only CLI output must not depend on the AppKit launch event loop.
+if CommandLine.arguments.contains("--print-status") {
+    let power = IOKitPowerMonitor().current
+    let estimate = IOKitBatteryEstimator().currentEstimate()
+    let assertions = IOKitAssertionProvider().currentAssertions()
+    let blockers = SleepBlockerSummary.names(assertions: assertions, ownPID: getpid())
+    print(StatusLineFormatter.format(power: power, estimate: estimate))
+    if let line = StatusLineFormatter.blockersLine(blockers: blockers) { print(line) }
+    exit(0)
 }
 
 let application = NSApplication.shared
