@@ -131,16 +131,16 @@ func guiAppShellWithoutTerminalIsApp(name: String) {
 }
 
 @Test(arguments: [12, 13]) func depthLimitRequiresCompleteChain(count: Int) {
-    let snapshots = (0..<count).map { index in
-        process(
-            Int32(100 + index),
-            parent: index == count - 1 ? 1 : Int32(101 + index),
-            name: index == 1 ? "zsh" : "caffeinate",
-            terminal: index == 0
-        )
+    var snapshots: [ProcessSnapshot] = []
+    for index in 0..<count {
+        let pid = Int32(100 + index)
+        let parent: Int32 = index == count - 1 ? 1 : pid + 1
+        let name: String = index == 1 ? "zsh" : "caffeinate"
+        snapshots.append(process(pid, parent: parent, name: name, terminal: index == 0))
     }
     let classifier = ProcessClassifier(processTable: FakeProcessTable(snapshots))
-    #expect(classifier.origin(of: 100) == (count == 12 ? .console : .app))
+    let expected: ProcessOrigin = count == 12 ? .console : .app
+    #expect(classifier.origin(of: 100) == expected)
 }
 
 @Test func shellBeyondDepthLimitIsApp() {

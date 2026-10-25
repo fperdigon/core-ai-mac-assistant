@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import UserNotifications
+@preconcurrency import UserNotifications
 
 public enum AuthorizationState: Sendable, Equatable {
     case notDetermined

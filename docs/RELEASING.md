@@ -16,112 +16,119 @@ limitations under the License.
 
 # Releasing Core AI Mac Assistant
 
-Releases contain a universal macOS app for Apple silicon and Intel, requiring macOS
-13 or later. `VERSION` supplies both bundle version strings. No entitlements are
-needed: this app uses Hardened Runtime without App Sandbox.
+The app is a pure Swift package. Releases contain a universal Apple silicon and
+Intel app for macOS 13 or later in an **ad-hoc signed DMG, not notarized**.
+The entire bundle is sealed with an ad-hoc signature. No Apple Developer account,
+Developer ID certificate, notarization credentials, or repository secrets are
+required. GitHub supplies the workflow token with `contents: write`.
 
-## Apple credentials
+## Branches and versions
 
-An Apple Developer Program membership is required for Developer ID distribution.
-In Keychain Access, use Certificate Assistant to request a certificate from a
-certificate authority and save the certificate signing request. In the Apple
-Developer account's Certificates, Identifiers & Profiles section, create a
-**Developer ID Application** certificate using that request. Download and install
-it in the same keychain as the private key. Export the certificate and its private
-key together as a password-protected `.p12`. Encode that file as base64 for the
-repository secret. Keep the private key and export outside the repository.
+`main` is the trunk. Develop on feature branches and merge through pull requests.
+`VERSION` holds a numeric `major.minor.patch` version. The
+`Resources/Info.plist` template uses `@VERSION@` for both bundle version strings;
+the bundle script resolves them from `VERSION`, so there is only one version to
+update. Tags must be `v` followed by that exact version.
 
-In App Store Connect, open Users and Access, Integrations, App Store Connect API.
-An Account Holder or Admin can enable API access. Create a team API key with the
-Developer role (or another role allowed to submit for notarization). Download its
-`.p8` private key, available only once. Record its key ID and issuer ID and encode
-the private key as base64. Keep all credentials in secure storage.
+Use rmount's changelog conventions when recording release changes: Keep a
+Changelog sections (`Added`, `Changed`, `Fixed`) under `Unreleased`, then a
+Semantic Versioning heading and release date. Published release notes are generated
+from commit subjects by `scripts/release-notes.sh`, with a full comparison link
+for tagged releases. Use descriptive commit subjects.
 
-Set these repository Actions secrets (names only):
+## Build and verify locally
 
-- `MACOS_CERTIFICATE_P12_BASE64`
-- `MACOS_CERTIFICATE_PASSWORD`
-- `MACOS_SIGN_IDENTITY`
-- `NOTARY_API_KEY_P8_BASE64`
-- `NOTARY_API_KEY_ID`
-- `NOTARY_API_ISSUER_ID`
-
-Use the certificate's full Developer ID Application signing identity for
-`MACOS_SIGN_IDENTITY`. `KEYCHAIN_PASSWORD` is generated and masked per run; do not
-store it as a repository secret. GitHub supplies `GITHUB_TOKEN` automatically.
-The workflow grants it `contents: write` to publish the release. Do not put
-credential values in workflow files, shell history, logs, or release notes.
-
-## Local bundle and checks
-
-Install Xcode and select its command line tools. From the repository root:
+Install Xcode and select its command line tools, then run from the repository root:
 
 ```sh
-sh scripts/test-make-app-bundle.sh
 swift build
 swift test
+python3 -m unittest discover -s scripts/tests -v
+sh scripts/test-make-app-bundle.sh
+BUILD_CHANNEL=dev scripts/build-release.sh
 ```
 
-The bundle test builds both architectures, assembles
-`build/Core AI Mac Assistant.app`, and verifies its metadata, architectures,
-ad-hoc signature, and Hardened Runtime flag. It does not require credentials or
-contact Apple's notarization service. Run it again to rebuild the same bundle.
-For a local Developer ID build, set `SIGN_IDENTITY` in the environment and run
-`sh scripts/make-app-bundle.sh`. The script applies a secure timestamp with a real
-identity. The scripts forward optional arguments to Swift build, so
-`sh scripts/test-make-app-bundle.sh --disable-sandbox` is available when required
-by the local execution environment. Use that flag for manual Swift build/test
-commands in the same environment.
+The output is `dist/CoreAIMacAssistant-0.1.0.dmg` (using the current `VERSION`)
+and its `.sha256` file. The DMG holds `Core AI Mac Assistant.app` and an
+Applications shortcut. `scripts/verify-dmg.sh` mounts it read-only, checks bundle
+metadata, executable permissions, both architectures and the whole-bundle
+signature, then unmounts even if a check fails. It never launches the app.
+The Python unit tests use fake disk and signing tools, without mounting images.
+
+The bundle and release scripts forward extra arguments to `swift build`.
+When the local sandbox blocks SwiftPM, append `--disable-sandbox` to build/test
+commands and bundle/release scripts.
+
+Build metadata for the updater is embedded before sealing:
+
+- `CFBundleShortVersionString` and `CFBundleVersion`: `VERSION`.
+- `CAMGitSHA`: full `GITHUB_SHA`, otherwise `git rev-parse HEAD`, or `unknown`
+  outside a Git checkout.
+- `CAMBuildChannel`: `BUILD_CHANNEL` (`stable`, `nightly`, or `dev`; default `dev`).
+  The Release workflow sets `stable` for tags, `nightly` for main, and `dev` for
+  other manually selected branches.
+
+CI runs Swift tests with coverage on macOS 14. Pull requests need at least 80%
+coverage of changed core source lines through llvm-cov export and diff-cover.
+Generated code, tests and the thin `Sources/CoreAIMacAssistant/` UI executable
+are excluded, as rmount excludes its `App/` UI. Keep testable logic in
+`CoreAIMacAssistantCore`. The macOS 15 job also compiles the Swift package's app
+scheme with the Xcode toolchain and signing disabled.
 
 ## Tag and publish
 
-1. Update `VERSION` to a numeric `major.minor.patch` value, starting at `0.1.0`.
-   Merge the version change after CI passes, including the bundle test.
-2. Tag that revision with `v` followed by the exact version, then push the tag:
+1. Update `VERSION` and merge the version change through a pull request after CI
+   passes. The Info.plist template needs no version edit.
+2. Tag the intended main revision and push the tag, for example:
 
    ```sh
    git tag v0.1.0
    git push origin v0.1.0
    ```
 
-3. Watch the Release workflow. It imports the certificate into a temporary
-   keychain, builds and signs, submits a ZIP to Apple's notary service, checks
-   acceptance, staples the ticket, and verifies Gatekeeper assessment and the
-   stapled ticket. It then creates a fresh ZIP and SHA-256 checksum and publishes
-   both in a GitHub Release. Temporary credentials and the keychain are removed
-   even when a step fails.
+3. The Release workflow checks the tag, runs tests, builds and verifies the DMG,
+   and creates a regular GitHub Release with generated notes and SHA-256 checksums.
+   A version mismatch fails before publishing. Tagged releases are ad-hoc signed
+   and not notarized, just like nightlies.
 
-The tag must match `VERSION` or the workflow fails. When any required credential
-is absent, signing and notarization steps are skipped with a clear log message.
-The workflow still publishes an **unsigned prerelease**, with `-unsigned` in the
-asset filename. That app has only an ad-hoc signature and no notarization ticket;
-it is intended for local testing. Gatekeeper assessment is expected to fail for
-that fallback. With complete credentials, signing or notarization errors fail the
-workflow rather than publishing an unsigned fallback.
+## Nightlies and manual runs
 
-## Verify a download
+Every commit on `main`, including merged PRs and direct pushes, publishes a
+`nightly-YYYYMMDD-<sha>` pre-release. Notes identify the date and commit and say:
+“Automated build of main ... Unsigned (ad-hoc signed, not notarized) and unstable”.
+Assets include the date and short SHA. Re-running the same commit on the same day
+skips publication when that release already exists.
 
-Download the ZIP and its matching `.sha256` file from the same release. In the
-download directory, for version `0.1.0`:
+The `KEEP_NIGHTLIES` repository Actions variable controls retention (positive
+integer, default `1`). After publishing, older nightly releases are removed;
+their tags remain. The newest notes carry forward previous nightly history,
+limited to 100 KB. When no usable previous nightly exists, changes start at the
+latest version tag, or the latest 20 commits. Tagged releases are never pruned.
+
+A manual `workflow_dispatch` follows the selected ref just like a push: tags
+publish regular releases, branches publish pre-releases. Select `main` for a
+nightly; a different branch embeds the `dev` build channel. No Developer ID or
+notarization steps run in any case.
+
+## Verify and install a download
+
+Download a DMG and its matching `.sha256` from the same
+[GitHub Release](https://github.com/fperdigon/core-ai-mac-assistant/releases).
+In the download directory, for example:
 
 ```sh
-shasum -a 256 -c Core-AI-Mac-Assistant-0.1.0.zip.sha256
-ditto -x -k Core-AI-Mac-Assistant-0.1.0.zip .
-codesign --verify --strict 'Core AI Mac Assistant.app'
-codesign --display --verbose=4 'Core AI Mac Assistant.app'
-spctl --assess --type execute --verbose 'Core AI Mac Assistant.app'
-xcrun stapler validate 'Core AI Mac Assistant.app'
+shasum -a 256 -c CoreAIMacAssistant-0.1.0.dmg.sha256
 ```
 
-Check that the displayed identifier matches
-`io.github.fperdigon.core-ai-mac-assistant` and the signing authority and team match
-the project's expected Developer ID. The checksum detects download corruption;
-its trust depends on obtaining the checksum from a trusted release. For unsigned
-prereleases, use the filename with `-unsigned`; only checksum and ad-hoc signature
-verification apply. Do not disable Gatekeeper to validate a production release.
+The checksum file names the DMG it verifies. For nightlies use the matching
+nightly checksum filename. This detects corruption; trust depends on obtaining
+the checksum from a trusted release. Developers can also run:
 
-## Follow-up: Homebrew cask
+```sh
+scripts/verify-dmg.sh CoreAIMacAssistant-0.1.0.dmg
+```
 
-A future Homebrew cask can reference the versioned release ZIP and its SHA-256,
-install the app bundle, and declare macOS 13 as the minimum. Keep that work
-separate until signed and notarized releases are established.
+Open the DMG, drag the app to Applications, and eject the image. On first launch,
+right-click the app and choose **Open**. If macOS blocks it, use **System Settings
+> Privacy & Security > Open Anyway**, then confirm Open. This is expected for an
+ad-hoc signed app without notarization. Do not disable Gatekeeper globally.
