@@ -41,6 +41,17 @@ limit prevents repeated termination if something keeps relaunching `caffeinate`.
 Console classification uses conservative ancestry heuristics; incomplete evidence
 is treated as app-originated.
 
+## Install
+
+Requires macOS 13 or later (Apple silicon or Intel). Download the DMG and matching
+`.sha256` file from [GitHub Releases](https://github.com/fperdigon/core-ai-mac-assistant/releases).
+Verify the download with `shasum -a 256 -c CoreAIMacAssistant-0.1.0.dmg.sha256`
+using your downloaded checksum filename. Open the DMG, drag **Core AI Mac Assistant**
+to Applications, then eject it. On first launch, right-click the app and choose
+**Open**; if blocked, use **System Settings > Privacy & Security > Open Anyway**.
+Builds are ad-hoc signed and not notarized. Nightly pre-releases are unstable;
+choose a tagged release for regular use.
+
 ## Build, test, and run from source
 
 Requires macOS 13 or later and a Swift 6 toolchain. There are no external package

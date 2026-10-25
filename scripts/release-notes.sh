@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Copyright 2026 The Core AI Mac Assistant contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Prints a markdown bullet list of the commits in (<from-ref>, <to-ref>].
+#
+# Usage: scripts/release-notes.sh [<from-ref>] [<to-ref>]
+#
+# If <from-ref> is empty, unknown, or not an ancestor of <to-ref> (e.g. after a
+# force-push), falls back to the 20 most recent commits so the notes are never empty.
+set -euo pipefail
+
+from="${1:-}"
+to="${2:-HEAD}"
+
+if [[ -n "$from" ]] \
+    && git cat-file -e "${from}^{commit}" 2>/dev/null \
+    && git merge-base --is-ancestor "$from" "$to" 2>/dev/null; then
+    range=("${from}..${to}")
+else
+    range=(-n 20 "$to")
+fi
+
+notes="$(git log --no-merges --pretty='- %s (%h)' "${range[@]}")"
+if [[ -z "$notes" ]]; then
+    notes="- No code changes."
+fi
+printf '%s\n' "$notes"

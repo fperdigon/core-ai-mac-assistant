@@ -1,3 +1,17 @@
+# Copyright 2026 The Core AI Mac Assistant contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 name: CI
 
 on:
@@ -5,18 +19,108 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
-    runs-on: macos-latest
+    runs-on: macos-15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - run: sh scripts/scan-secrets.sh
-      - run: sh scripts/test-scan-secrets.sh
-      - run: swift build
-      - run: swift test
+        with:
+          fetch-depth: 0
+      - name: Swift version
+        run: swift --version
+      - name: Secret scan
+        run: |
+          sh scripts/scan-secrets.sh
+          sh scripts/test-scan-secrets.sh
       - name: Check Apache-2.0 headers
         run: |
           sh scripts/check-license-headers.sh
           sh scripts/test-check-license-headers.sh
+      - name: Script tests
+        run: python3 -m unittest discover -s scripts/tests -v
+      - name: Build
+        run: swift build
+      - name: Test with coverage
+        run: swift test --enable-code-coverage
+      - name: Coverage report
+        run: |
+          PROFDATA="$(dirname "$(swift test --show-codecov-path)")/default.profdata"
+          BIN="$(find .build -type f -path '*.xctest/Contents/MacOS/*' | head -1)"
+          test -n "$BIN"
+          xcrun llvm-cov report "$BIN" -instr-profile "$PROFDATA" \
+            -ignore-filename-regex '\.build|Tests|Sources/CoreAIMacAssistant/|[Gg]enerated' | tee coverage.txt
+          {
+            echo '### Test coverage'
+            echo '```'
+            cat coverage.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.txt
+      # The thin SPM executable is UI composition code, like rmount's App/.
+      # Keep testable logic in CoreAIMacAssistantCore; exclude UI, generated code and tests.
+      - name: New-code coverage gate (>= 80%)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          PROFDATA="$(dirname "$(swift test --show-codecov-path)")/default.profdata"
+          BIN="$(find .build -type f -path '*.xctest/Contents/MacOS/*' | head -1)"
+          test -n "$BIN"
+          xcrun llvm-cov export -format=lcov "$BIN" -instr-profile "$PROFDATA" \
+            -ignore-filename-regex '\.build|Tests|Sources/CoreAIMacAssistant/|[Gg]enerated' \
+            | sed "s#SF:$PWD/#SF:#" > coverage.lcov
+          python3 -m venv .diffcover
+          .diffcover/bin/pip install --quiet 'diff-cover>=9,<10'
+          set +e
+          .diffcover/bin/diff-cover coverage.lcov --compare-branch="origin/$BASE_REF" \
+            --include 'Sources/*' --exclude 'Sources/CoreAIMacAssistant/*' '*[Gg]enerated*' '*Tests*' \
+            --fail-under=80 --markdown-report diff-coverage.md
+          status=$?
+          set -e
+          {
+            echo '### New-code coverage (at least 80% of changed core source lines)'
+            cat diff-coverage.md
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: always() && github.event_name == 'pull_request'
+        with:
+          name: diff-coverage-report
+          path: |
+            coverage.lcov
+            diff-coverage.md
       - name: Test app bundle
         run: sh scripts/test-make-app-bundle.sh
+
+  app-build:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain versions
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Build app with Xcode (unsigned Swift package)
+        run: |
+          set -o pipefail
+          xcodebuild -scheme CoreAIMacAssistant -destination 'platform=macOS' \
+            -configuration Debug -derivedDataPath build/Xcode \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
+            build 2>&1 | tee xcodebuild.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log
