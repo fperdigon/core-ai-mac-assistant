@@ -38,17 +38,43 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var keepAwakeDefaultDuration: TimeInterval?
     public var telegram: TelegramPreferences
     public var launchAtLogin: Bool
+    public var updateChannel: UpdateChannel
+    public var checkForUpdatesAutomatically: Bool
+    public var skippedVersion: String?
 
     public init(
         alerts: AlertSettings = AlertSettings(), policy: PolicySettings = PolicySettings(),
         keepAwakeDefaultDuration: TimeInterval? = nil,
-        telegram: TelegramPreferences = TelegramPreferences(), launchAtLogin: Bool = false
+        telegram: TelegramPreferences = TelegramPreferences(), launchAtLogin: Bool = false,
+        updateChannel: UpdateChannel = .stable, checkForUpdatesAutomatically: Bool = true,
+        skippedVersion: String? = nil
     ) {
         self.alerts = alerts
         self.policy = policy
         self.keepAwakeDefaultDuration = keepAwakeDefaultDuration
         self.telegram = telegram
         self.launchAtLogin = launchAtLogin
+        self.updateChannel = updateChannel
+        self.checkForUpdatesAutomatically = checkForUpdatesAutomatically
+        self.skippedVersion = skippedVersion
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case alerts, policy, keepAwakeDefaultDuration, telegram, launchAtLogin
+        case updateChannel, checkForUpdatesAutomatically, skippedVersion
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // Existing fields remain required so corrupt settings still use the store's fallback.
+        alerts = try container.decode(AlertSettings.self, forKey: .alerts)
+        policy = try container.decode(PolicySettings.self, forKey: .policy)
+        keepAwakeDefaultDuration = try container.decodeIfPresent(TimeInterval.self, forKey: .keepAwakeDefaultDuration)
+        telegram = try container.decode(TelegramPreferences.self, forKey: .telegram)
+        launchAtLogin = try container.decode(Bool.self, forKey: .launchAtLogin)
+        updateChannel = try container.decodeIfPresent(UpdateChannel.self, forKey: .updateChannel) ?? .stable
+        checkForUpdatesAutomatically = try container.decodeIfPresent(Bool.self, forKey: .checkForUpdatesAutomatically) ?? true
+        skippedVersion = try container.decodeIfPresent(String.self, forKey: .skippedVersion)
     }
 
     /// Keep thresholds strictly ordered and intervals finite and at least ten seconds.

@@ -18,14 +18,14 @@ import SwiftUI
 
 @MainActor
 final class SettingsWindowController: NSWindowController {
-    init(model: SettingsModel) {
+    init(model: SettingsModel, checkForUpdates: @escaping () -> Void) {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 640, height: 780),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false
         )
         window.title = "Settings"
-        window.contentViewController = NSHostingController(rootView: SettingsView(model: model))
+        window.contentViewController = NSHostingController(rootView: SettingsView(model: model, checkForUpdates: checkForUpdates))
         window.isReleasedWhenClosed = false
         super.init(window: window)
         window.center()

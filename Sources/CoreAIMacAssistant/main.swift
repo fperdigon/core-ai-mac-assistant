@@ -23,6 +23,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let settings = SettingsModel(
         store: UserDefaultsSettingsStore(defaults: .standard), secrets: KeychainSecretStore()
     )
+    private lazy var updates = UpdateController(
+        preferences: { [unowned self] in
+            UpdatePreferences(channel: settings.settings.updateChannel,
+                              automatically: settings.settings.checkForUpdatesAutomatically,
+                              skippedVersion: settings.settings.skippedVersion)
+        },
+        skipVersion: { [unowned self] in settings.settings.skippedVersion = $0 },
+        beforeQuit: { [unowned self] in
+            // The controller saves every state change. Re-save the current deadline and flush
+            // before quitting so the replacement restores precisely the same assertion state.
+            let defaults = UserDefaults.standard
+            let store = UserDefaultsKeepAwakeStateStore(defaults: defaults)
+            store.save(controller.isActive ? KeepAwakeState(isActive: true, expiryDate: controller.expiryDate) : nil)
+            defaults.synchronize()
+        }
+    )
     private var engine: AssistantEngine?
     private var settingsWindow: SettingsWindowController?
     private let statusLine = NSMenuItem(title: "Reading power state…", action: nil, keyEquivalent: "")
@@ -49,6 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
+        menu.addItem(updates.menuItem())
         let quit = NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         menu.addItem(quit)
@@ -65,6 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         self.engine = engine
         engine.onChange = { [weak self] in self?.refreshStatus() }
         controller.restoreIfNeeded()
+        updates.checkInBackgroundIfDue()
         controller.onChange = { [weak self] _ in
             self?.refreshStatus()
             Task { @MainActor [weak self] in await self?.engine?.evaluate() }
@@ -114,7 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func openSettings() {
-        if settingsWindow == nil { settingsWindow = SettingsWindowController(model: settings) }
+        if settingsWindow == nil { settingsWindow = SettingsWindowController(model: settings, checkForUpdates: { [weak self] in self?.updates.checkNow() }) }
         settingsWindow?.show()
     }
 

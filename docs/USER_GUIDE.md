@@ -85,6 +85,31 @@ the core channel supports this option. Telegram alerts are intended to respect
 the phone's silent and Do Not Disturb settings. Urgency uses frequency and wording;
 delivery and sound also depend on Telegram and device settings.
 
+## Updates
+
+Choose **Check for Updates…** in the status menu, or open **Settings > Updates**
+and choose **Check now**. Stable releases are the default; select Nightly for
+the newest published development build. A development build with no known commit
+never reports that it is current on the Nightly channel.
+
+Automatic checking is on by default. It runs at launch at most once every
+24 hours, including failed checks; disable it in Settings for manual checks.
+**Later** dismisses an offer. **Skip this version** suppresses that release in
+background checks; a manual check can still offer it. Changing channels clears
+the skipped release.
+
+**Install and relaunch** downloads the DMG with progress, verifies GitHub's
+SHA-256 digest if one is published, mounts the image read-only, and checks the
+app's bundle identifier and code signature. Installation stages the bundle on
+the same volume and atomically replaces it, retaining a backup through validation.
+If installation fails, the app reports an error and restores the backup when
+replacement has started. The destination folder must be writable.
+
+The app saves and flushes its current keep-awake state before quitting. A helper
+waits for exit and reopens the installed app, which restores the saved state and
+expiry. Checks use GitHub's public API; installation downloads only the chosen
+release asset. There is no telemetry. See [PRIVACY.md](PRIVACY.md).
+
 ## Privacy and removal
 
 There is no telemetry. Local operation needs no network. Optional Telegram
