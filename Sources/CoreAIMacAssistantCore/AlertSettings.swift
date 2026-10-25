@@ -14,7 +14,7 @@
 
 import Foundation
 
-public struct AlertSettings: Sendable, Equatable {
+public struct AlertSettings: Codable, Sendable, Equatable {
     public let urgentBelowPercent: Int
     public let criticalBelowPercent: Int
     public let normalInterval: TimeInterval
