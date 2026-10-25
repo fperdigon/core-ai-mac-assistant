@@ -40,6 +40,13 @@ public struct BuildInfo: Equatable, Sendable {
 
     public var shortSHA: String { String(sha.prefix(7)) }
     public var isDevBuild: Bool { sha == "unknown" || channel == "dev" }
+
+    /// Version text shown in Settings for the running build.
+    public var displayVersion: String {
+        if isDevBuild { return "development build" }
+        if channel == "nightly" { return "\(version) (\(shortSHA)) nightly" }
+        return version
+    }
 }
 
 public enum VersionCompare {
