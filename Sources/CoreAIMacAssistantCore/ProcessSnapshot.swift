@@ -17,11 +17,16 @@ public struct ProcessSnapshot: Equatable, Sendable {
     public let parentPID: Int32
     public let name: String
     public let hasControllingTerminal: Bool
+    public let userID: UInt32?
 
-    public init(pid: Int32, parentPID: Int32, name: String, hasControllingTerminal: Bool) {
+    public init(
+        pid: Int32, parentPID: Int32, name: String, hasControllingTerminal: Bool,
+        userID: UInt32? = nil
+    ) {
         self.pid = pid
         self.parentPID = parentPID
         self.name = name
         self.hasControllingTerminal = hasControllingTerminal
+        self.userID = userID
     }
 }

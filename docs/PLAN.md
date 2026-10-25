@@ -38,6 +38,17 @@ Swift package, menu bar app (same style as `macsh`). Modules are kept small and 
 
 `Policy` has no side effects, so the rules below are covered by unit tests.
 
+### AssistantEngine
+
+`AssistantEngine` runs on the main actor and evaluates power changes and periodic
+10-second assertion snapshots. It classifies ownership and origin, applies the
+stateful policy, executes guarded process termination or releases its own assertion,
+and schedules battery alerts for the remaining blockers. Settings are read on every
+evaluation without resetting detection, retry history, or alert cadence. Protocols
+isolate clocks, ticks, providers, signals, and notification channels for deterministic
+tests. Local and optional Telegram delivery fan out independently; the app target
+only constructs adapters and presents engine and controller state in the menu.
+
 ## Caffeinate rules
 
 | Origin | Behavior |

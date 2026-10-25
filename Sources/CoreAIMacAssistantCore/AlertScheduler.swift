@@ -15,7 +15,7 @@
 import Foundation
 
 public struct AlertScheduler: AlertScheduling {
-    public let settings: AlertSettings
+    public var settings: AlertSettings
 
     private var previousLevel: AlertLevel?
     private var lastAlertTime: Date?

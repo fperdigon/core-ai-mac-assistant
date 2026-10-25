@@ -1,0 +1,203 @@
+// Copyright 2026 The Core AI Mac Assistant contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import Darwin
+import Foundation
+
+@MainActor
+public final class AssistantEngine {
+    public private(set) var power: PowerState
+    public private(set) var blockers: [String] = []
+    public var onChange: (@MainActor @Sendable () -> Void)?
+
+    public var statusText: String {
+        let percent = power.batteryPercent.map { "\($0)%" } ?? "Battery unknown"
+        let source = power.source == .ac ? "AC power" : "Battery power"
+        let awake = blockers.isEmpty ? "No sleep blockers" : "Keeping awake: " + blockers.joined(separator: ", ")
+        return "\(percent) · \(source) · \(awake)"
+    }
+
+    private let powerMonitor: any PowerMonitoring
+    private let assertionProvider: any AssertionProviding
+    private let classifier: any ProcessClassifying
+    private var policy: any PolicyEvaluating
+    private var alerts: any AlertScheduling
+    private let controller: CaffeinateController
+    private let notifier: CompositeNotifier
+    private let terminator: any ProcessTerminating
+    private let settings: any AssistantSettingsProviding
+    private let clock: any AssistantClock
+    private let tickScheduler: any AssistantTickScheduling
+    private let tickInterval: TimeInterval
+    private let ownPID: Int32
+    private let currentUserID: UInt32
+    private let composer: any NoticeComposing
+    private var cancelTicks: (@Sendable () -> Void)?
+    private var isRunning = false
+    private var evaluating = false
+    private var evaluationPending = false
+
+    public init(
+        powerMonitor: any PowerMonitoring, assertionProvider: any AssertionProviding,
+        classifier: any ProcessClassifying,
+        policyEngine: any PolicyEvaluating = PolicyEngine(),
+        alertScheduler: any AlertScheduling = AlertScheduler(),
+        caffeinateController: CaffeinateController, channels: [any AlertNotifying],
+        terminator: any ProcessTerminating, settings: any AssistantSettingsProviding,
+        clock: any AssistantClock = SystemAssistantClock(),
+        tickScheduler: any AssistantTickScheduling = AssistantTickScheduler(),
+        tickInterval: TimeInterval = 10, ownPID: Int32 = getpid(),
+        currentUserID: UInt32 = getuid(), composer: any NoticeComposing = NoticeComposer()
+    ) {
+        self.powerMonitor = powerMonitor
+        self.assertionProvider = assertionProvider
+        self.classifier = classifier
+        policy = policyEngine
+        alerts = alertScheduler
+        controller = caffeinateController
+        notifier = CompositeNotifier(channels: channels)
+        self.terminator = terminator
+        self.settings = settings
+        self.clock = clock
+        self.tickScheduler = tickScheduler
+        self.tickInterval = tickInterval.isFinite ? max(0.1, tickInterval) : 10
+        self.ownPID = ownPID
+        self.currentUserID = currentUserID
+        self.composer = composer
+        power = powerMonitor.current
+    }
+
+    deinit { cancelTicks?() }
+
+    public func start() async {
+        guard !isRunning else { return }
+        isRunning = true
+        powerMonitor.start { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.isRunning else { return }
+                await self.evaluate()
+            }
+        }
+        cancelTicks = tickScheduler.schedule(every: tickInterval) { [weak self] in
+            guard let self, self.isRunning else { return }
+            await self.evaluate()
+        }
+        await evaluate()
+    }
+
+    public func stop() {
+        isRunning = false
+        evaluationPending = false
+        cancelTicks?()
+        cancelTicks = nil
+        powerMonitor.stop()
+    }
+
+    /// Coalesce events arriving during asynchronous effects without overlapping policy runs.
+    public func evaluate() async {
+        guard !evaluating else {
+            evaluationPending = true
+            return
+        }
+        evaluating = true
+        defer { evaluating = false }
+        repeat {
+            evaluationPending = false
+            await evaluateOnce()
+        } while evaluationPending && !Task.isCancelled
+    }
+
+    private func evaluateOnce() async {
+        let preferences = settings.settings.validated()
+        // Updating configuration preserves detection, retry history, and alert cadence.
+        if var engine = policy as? PolicyEngine {
+            engine.settings = preferences.policy
+            policy = engine
+        }
+        if var scheduler = alerts as? AlertScheduler {
+            scheduler.settings = preferences.alerts
+            alerts = scheduler
+        }
+        power = powerMonitor.current
+        let now = clock.now
+        var assertions = assertionProvider.currentAssertions().filter {
+            $0.pid != ownPID || $0.name != CaffeinateController.assertionName || controller.isActive
+        }
+        if controller.isActive, !assertions.contains(where: isOwnAssertion) {
+            assertions.append(SleepAssertion(
+                pid: ownPID, processName: AppInfo.name, type: "PreventUserIdleSystemSleep",
+                name: CaffeinateController.assertionName
+            ))
+        }
+        let classified = assertions.map { assertion in
+            ClassifiedAssertion(
+                assertion: assertion, origin: classifier.origin(of: assertion.pid),
+                isOwnedByCurrentUser: classifier.isOwnedByCurrentUser(
+                    assertion.pid, currentUserID: currentUserID
+                ),
+                isOwnAppAssertion: isOwnAssertion(assertion)
+            )
+        }
+        let actions = policy.evaluate(power: power, assertions: classified, now: now)
+        var removedPIDs: Set<Int32> = []
+        for action in actions {
+            guard !Task.isCancelled else { return }
+            switch action {
+            case .terminate(let pid, let name, _):
+                await notifier.deliver(Notice(
+                    kind: .info, title: "Stopping keep-awake process",
+                    body: "Stopping \(name) (PID \(pid))."
+                ))
+                let result = await terminator.terminate(pid: pid, expectedName: name)
+                switch result {
+                case .terminated:
+                    removedPIDs.insert(pid)
+                    await notifier.deliver(composer.compose(action: action))
+                case .notFound:
+                    removedPIDs.insert(pid)
+                    await notifier.deliver(Notice(
+                        kind: .terminationSkipped, title: "Process no longer available",
+                        body: "PID \(pid) is no longer the expected process."
+                    ))
+                case .failed:
+                    await notifier.deliver(Notice(
+                        kind: .terminationSkipped, title: "Termination failed",
+                        body: "Could not stop \(name) (PID \(pid))."
+                    ))
+                }
+            case .releaseOwnAssertion:
+                await notifier.deliver(Notice(
+                    kind: .info, title: "Releasing keep-awake",
+                    body: "Battery threshold reached. Releasing the app's sleep assertion."
+                ))
+                controller.deactivate()
+                await notifier.deliver(composer.compose(action: action))
+            default:
+                await notifier.deliver(composer.compose(action: action))
+            }
+        }
+        let remaining = assertions.filter {
+            !removedPIDs.contains($0.pid) && (!isOwnAssertion($0) || controller.isActive)
+        }
+        blockers = Array(Set(remaining.map { isOwnAssertion($0) ? AppInfo.name : $0.processName })).sorted()
+        if let alert = alerts.evaluate(power: power, blockerActive: !remaining.isEmpty, now: now) {
+            await notifier.deliver(composer.compose(alert: alert, blockers: blockers))
+        }
+        onChange?()
+    }
+
+    private func isOwnAssertion(_ assertion: SleepAssertion) -> Bool {
+        assertion.pid == ownPID && assertion.name == CaffeinateController.assertionName
+    }
+}
