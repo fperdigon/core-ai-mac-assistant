@@ -22,20 +22,37 @@ struct UpdatesSettingsSection: View {
     let checkNow: () -> Void
 
     var body: some View {
-        Section("Updates") {
-            Picker("Channel", selection: $channel) {
-                ForEach(UpdateChannel.allCases, id: \.self) { channel in
-                    Text(channel.displayName).tag(channel)
+        Section {
+            LabeledContent("Channel") {
+                Picker("", selection: $channel) {
+                    Text("Stable").tag(UpdateChannel.stable)
+                    Text("Nightly").tag(UpdateChannel.nightly)
                 }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(maxWidth: 280)
             }
-            Text(channel == .stable ? "Tested releases." : "Latest builds; may be less tested.")
+            Text(channel == .stable
+                 ? "Tagged releases (v0.1.x, ...): tested and announced."
+                 : "A build of every change merged to main: newest features, less tested.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Toggle("Check for updates automatically", isOn: $automatically)
-            Text("Checks at launch, at most once every 24 hours.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Button("Check now", action: checkNow)
+            LabeledContent("Automatic") {
+                Toggle("Check once a day", isOn: $automatically)
+                    .toggleStyle(.checkbox)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            LabeledContent("Running") {
+                Text("Core AI Mac Assistant \(BuildInfo.current.displayVersion)")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            LabeledContent(" ") {
+                Button("Check for updates…", action: checkNow)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } header: {
+            Text("Software updates")
         }
     }
 }

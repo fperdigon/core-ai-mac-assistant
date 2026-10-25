@@ -45,9 +45,12 @@ func updateNumericVersionComparison(a: String, b: String, expected: Int) {
     #expect(build.version == "1.2")
     #expect(build.sha == updateSHA)
     #expect(build.shortSHA == "abcdef1")
+    #expect(build.displayVersion == "1.2 (abcdef1) nightly")
     #expect(!build.isDevBuild)
     #expect(BuildInfo(infoDictionary: info, bundleIdentifier: nil).isDevBuild)
     #expect(BuildInfo(infoDictionary: nil, bundleIdentifier: nil).sha == "unknown")
+    #expect(BuildInfo(infoDictionary: nil, bundleIdentifier: nil).displayVersion == "development build")
+    #expect(BuildInfo(version: "1.2", sha: updateSHA, channel: "stable").displayVersion == "1.2")
     for sha in ["unknown", "abcdef1", String(repeating: "z", count: 40), ""] {
         #expect(BuildInfo(version: "1", sha: sha, channel: "nightly").isDevBuild)
     }
