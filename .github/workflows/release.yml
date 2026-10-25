@@ -14,9 +14,13 @@
 
 name: Release
 
+# Tags publish stable releases; every main commit publishes a distinct nightly.
+# Manual dispatch follows the selected ref, just like a push.
 on:
   push:
+    branches: [main]
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -27,136 +31,66 @@ concurrency:
 
 jobs:
   release:
-    runs-on: macos-latest
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUILD_CHANNEL: ${{ github.ref_type == 'tag' && 'stable' || github.ref_name == 'main' && 'nightly' || 'dev' }}
+      KEEP_NIGHTLIES: ${{ vars.KEEP_NIGHTLIES || '1' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Validate release version
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
+        with:
+          fetch-depth: 0
+      - name: Check tag matches app version
+        if: github.ref_type == 'tag'
         run: |
-          set -eu
-          test "$RELEASE_TAG" = "v$(cat VERSION)" || {
-            echo 'Release tag must match VERSION.' >&2
-            exit 1
-          }
-      - name: Check release credentials
-        id: credentials
-        env:
-          CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
-          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-          SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
-          NOTARY_KEY: ${{ secrets.NOTARY_API_KEY_P8_BASE64 }}
-          NOTARY_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
-          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_API_ISSUER_ID }}
-        run: |
-          set -eu
-          if [ -n "$CERTIFICATE" ] && [ -n "$CERTIFICATE_PASSWORD" ] &&
-             [ -n "$SIGN_IDENTITY" ] && [ -n "$NOTARY_KEY" ] &&
-             [ -n "$NOTARY_KEY_ID" ] && [ -n "$NOTARY_ISSUER_ID" ]; then
-            echo 'available=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'available=false' >> "$GITHUB_OUTPUT"
-            echo 'Signing/notarization secrets are incomplete. Skipping Developer ID signing and notarization; publishing an unsigned (ad-hoc signed) prerelease.'
-          fi
-      - name: Import Developer ID certificate
-        if: steps.credentials.outputs.available == 'true'
-        env:
-          CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
-          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-        run: |
-          set -eu
-          umask 077
-          KEYCHAIN_PASSWORD=$(openssl rand -hex 32)
-          echo "::add-mask::$KEYCHAIN_PASSWORD"
-          keychain="$RUNNER_TEMP/release-signing.keychain-db"
-          certificate="$RUNNER_TEMP/release-certificate.p12"
-          printf '%s' "$CERTIFICATE" | base64 --decode > "$certificate"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain"
-          security set-keychain-settings -lut 21600 "$keychain"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain"
-          security import "$certificate" -k "$keychain" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign > /dev/null
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$keychain" > /dev/null
-          # Keep the standard keychain available to resolve Apple's certificate chain.
-          security list-keychains -d user -s "$keychain" "$HOME/Library/Keychains/login.keychain-db"
-          rm -f "$certificate"
-      - name: Build and sign app bundle
-        env:
-          RELEASE_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
-          HAS_CREDENTIALS: ${{ steps.credentials.outputs.available }}
-        run: |
-          set -eu
-          if [ "$HAS_CREDENTIALS" = true ]; then
-            export SIGN_IDENTITY="$RELEASE_SIGN_IDENTITY"
-          else
-            export SIGN_IDENTITY=-
-          fi
-          sh scripts/make-app-bundle.sh
-      - name: Submit for notarization and staple
-        if: steps.credentials.outputs.available == 'true'
-        env:
-          NOTARY_KEY: ${{ secrets.NOTARY_API_KEY_P8_BASE64 }}
-          NOTARY_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
-          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_API_ISSUER_ID }}
-        run: |
-          set -eu
-          umask 077
-          key="$RUNNER_TEMP/release-notary-key.p8"
-          printf '%s' "$NOTARY_KEY" | base64 --decode > "$key"
-          ditto -c -k --sequesterRsrc --keepParent 'build/Core AI Mac Assistant.app' "$RUNNER_TEMP/notarization.zip"
-          xcrun notarytool submit "$RUNNER_TEMP/notarization.zip" \
-            --key "$key" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" \
-            --wait --output-format json > "$RUNNER_TEMP/notarization-result.json"
-          status=$(plutil -extract status raw -o - "$RUNNER_TEMP/notarization-result.json")
-          if [ "$status" != Accepted ]; then
-            echo 'Notarization was not accepted. Review the submission in App Store Connect.' >&2
+          version="$(cat VERSION)"
+          # Info.plist is a template; make-app-bundle.sh resolves @VERSION@ from VERSION.
+          plist_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
+          test "$plist_version" = '@VERSION@'
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo '::error::Release tag must match VERSION and the bundle version.'
             exit 1
           fi
-          xcrun stapler staple 'build/Core AI Mac Assistant.app'
-          codesign --verify --strict 'build/Core AI Mac Assistant.app'
-          spctl --assess --type execute --verbose 'build/Core AI Mac Assistant.app'
-          xcrun stapler validate 'build/Core AI Mac Assistant.app'
-      - name: Archive app and compute checksum
-        id: archive
-        env:
-          HAS_CREDENTIALS: ${{ steps.credentials.outputs.available }}
+      - name: Toolchain versions
         run: |
-          set -eu
-          version=$(cat VERSION)
-          suffix=''
-          if [ "$HAS_CREDENTIALS" != true ]; then
-            suffix='-unsigned'
-          fi
-          archive="Core-AI-Mac-Assistant-$version$suffix.zip"
-          # Recreate after stapling so the distributed app includes its ticket.
-          ditto -c -k --sequesterRsrc --keepParent 'build/Core AI Mac Assistant.app' "build/$archive"
-          (cd build && shasum -a 256 "$archive" > "$archive.sha256")
-          echo "name=$archive" >> "$GITHUB_OUTPUT"
-      - name: Publish GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
-          ARCHIVE: ${{ steps.archive.outputs.name }}
-          HAS_CREDENTIALS: ${{ steps.credentials.outputs.available }}
+          xcodebuild -version
+          swift --version
+      - name: Run tests
         run: |
-          set -eu
-          if [ "$HAS_CREDENTIALS" = true ]; then
-            gh release create "$RELEASE_TAG" "build/$ARCHIVE" "build/$ARCHIVE.sha256" \
-              --verify-tag --title "$RELEASE_TAG" --generate-notes
-          else
-            gh release create "$RELEASE_TAG" "build/$ARCHIVE" "build/$ARCHIVE.sha256" \
-              --verify-tag --title "$RELEASE_TAG (unsigned prerelease)" --prerelease \
-              --notes 'Unsigned (ad-hoc signed), unnotarized build. Developer ID signing and notarization were skipped because release secrets were incomplete. Intended for local testing.'
-          fi
-      - name: Clean up signing material
+          swift test
+          python3 -m unittest discover -s scripts/tests -v
+      - name: Build and verify DMG
+        run: scripts/build-release.sh
+      - name: Check built release version
+        if: github.ref_type == 'tag'
+        run: |
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' 'build/Core AI Mac Assistant.app/Contents/Info.plist')"
+          test "$GITHUB_REF_NAME" = "v$version"
+      - name: Disk usage after build
         if: always()
+        run: df -h /
+      - name: Publish tagged release
+        if: github.ref_type == 'tag'
         run: |
-          set -eu
-          keychain="$RUNNER_TEMP/release-signing.keychain-db"
-          cleanup_status=0
-          if [ -f "$keychain" ]; then
-            security delete-keychain "$keychain" || cleanup_status=$?
-          fi
-          rm -f "$RUNNER_TEMP/release-certificate.p12" "$RUNNER_TEMP/release-notary-key.p8" \
-            "$RUNNER_TEMP/notarization.zip" "$RUNNER_TEMP/notarization-result.json"
-          exit "$cleanup_status"
+          prev_tag="$(git describe --tags --abbrev=0 --match 'v*' "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
+          {
+            echo 'Unsigned (ad-hoc signed, not notarized). On first launch, right-click > Open.'
+            echo
+            if [ -n "$prev_tag" ]; then
+              echo "## Changes since $prev_tag"
+            else
+              echo '## Changes'
+            fi
+            echo
+            scripts/release-notes.sh "$prev_tag" "$GITHUB_REF_NAME"
+            if [ -n "$prev_tag" ]; then
+              echo
+              echo "**Full diff:** https://github.com/${GITHUB_REPOSITORY}/compare/${prev_tag}...${GITHUB_REF_NAME}"
+            fi
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" dist/*.dmg dist/*.sha256 \
+            --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+      - name: Publish nightly pre-release
+        if: github.ref_type != 'tag'
+        run: scripts/publish-nightly.sh

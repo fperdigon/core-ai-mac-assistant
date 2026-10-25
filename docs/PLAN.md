@@ -99,7 +99,7 @@ Alerts stop as soon as the charger is connected or the blocking assertion is gon
 ## Distribution and license
 
 - Apache-2.0 (`LICENSE`, `NOTICE`, source headers).
-- Signed and notarized builds published on GitHub Releases. Homebrew cask is a possible follow-up.
+- Ad-hoc signed DMGs, not notarized, published on GitHub Releases. Homebrew cask is a possible follow-up.
 
 ## Working method
 
