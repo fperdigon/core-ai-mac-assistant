@@ -21,6 +21,7 @@ If the environment blocks SwiftPM's build sandbox, use `--disable-sandbox` with
 `swift build` and `swift test`. The existing Keychain integration test is skipped
 when `CI` is set; use `CI=1 swift test` to avoid accessing the real Keychain.
 
+Run `swift run CoreAIMacAssistant --print-status` to print the current status line once and exit.
 Run `swift run CoreAIMacAssistant --show-settings` to open Settings immediately after launch.
 Run `swift run CoreAIMacAssistant --snapshot-settings <directory>` to save PNG snapshots of every Settings tab and exit.
 

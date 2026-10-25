@@ -121,7 +121,8 @@ private struct EngineFixture {
             powerMonitor: power, assertionProvider: assertions,
             classifier: ProcessClassifier(processTable: table), caffeinateController: controller,
             channels: [notices], terminator: terminator, settings: settings,
-            clock: clock, tickScheduler: ticks, ownPID: 99, currentUserID: 42
+            clock: clock, tickScheduler: ticks, ownPID: 99, currentUserID: 42,
+            batteryEstimator: EmptyBatteryEstimator()
         )
     }
 }
@@ -293,4 +294,8 @@ private struct EngineFixture {
     await fixture.ticks.fire()
     #expect(fixture.terminator.calls == [42, 42, 42, 42])
     fixture.engine.stop()
+}
+
+private struct EmptyBatteryEstimator: BatteryEstimating {
+    func currentEstimate() -> BatteryEstimate { BatteryEstimate() }
 }

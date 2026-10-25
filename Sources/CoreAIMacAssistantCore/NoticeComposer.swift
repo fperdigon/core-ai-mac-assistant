@@ -13,14 +13,22 @@
 // limitations under the License.
 
 public protocol NoticeComposing: Sendable {
-    func compose(alert: BatteryAlert, blockers: [String]) -> Notice
+    func compose(alert: BatteryAlert, blockers: [String], estimate: BatteryEstimate) -> Notice
     func compose(action: PolicyAction) -> Notice
+}
+
+public extension NoticeComposing {
+    func compose(alert: BatteryAlert, blockers: [String]) -> Notice {
+        compose(alert: alert, blockers: blockers, estimate: BatteryEstimate())
+    }
 }
 
 public struct NoticeComposer: NoticeComposing {
     public init() {}
 
-    public func compose(alert: BatteryAlert, blockers: [String] = []) -> Notice {
+    public func compose(
+        alert: BatteryAlert, blockers: [String] = [], estimate: BatteryEstimate = BatteryEstimate()
+    ) -> Notice {
         let title: String
         switch alert.level {
         case .normal: title = "Battery alert"
@@ -29,9 +37,10 @@ public struct NoticeComposer: NoticeComposing {
         }
         let names = blockers.filter { !$0.isEmpty }
         let keepingAwake = names.isEmpty ? "an active sleep assertion" : names.joined(separator: ", ")
+        let remaining = StatusLineFormatter.alertEstimate(estimate)
         return Notice(
             kind: .batteryAlert, title: title,
-            body: "Battery at \(alert.batteryPercent)%. Keeping the Mac awake: \(keepingAwake).",
+            body: "Battery at \(alert.batteryPercent)%\(remaining). Keeping the Mac awake: \(keepingAwake).",
             level: alert.level
         )
     }
