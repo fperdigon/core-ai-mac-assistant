@@ -41,6 +41,14 @@ public struct BuildInfo: Equatable, Sendable {
     public var shortSHA: String { String(sha.prefix(7)) }
     public var isDevBuild: Bool { sha == "unknown" || channel == "dev" }
 
+    /// Version text shown in the About section.
+    public static func aboutVersion(version: String, sha: String, channel: String) -> String {
+        guard channel == "nightly" || channel == "dev", sha != "unknown", !sha.isEmpty else {
+            return version
+        }
+        return "\(version) (\(sha.prefix(7)))"
+    }
+
     /// Version text shown in Settings for the running build.
     public var displayVersion: String {
         if isDevBuild { return "development build" }
