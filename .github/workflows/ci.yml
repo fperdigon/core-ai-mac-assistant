@@ -18,3 +18,5 @@ jobs:
         run: |
           sh scripts/check-license-headers.sh
           sh scripts/test-check-license-headers.sh
+      - name: Test app bundle
+        run: sh scripts/test-make-app-bundle.sh
