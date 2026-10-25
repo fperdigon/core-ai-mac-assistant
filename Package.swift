@@ -32,5 +32,9 @@ let package = Package(
             name: "CoreAIMacAssistantCoreTests",
             dependencies: ["CoreAIMacAssistantCore"]
         ),
+        .testTarget(
+            name: "CoreAIMacAssistantIntegrationTests",
+            dependencies: ["CoreAIMacAssistantCore"]
+        ),
     ]
 )

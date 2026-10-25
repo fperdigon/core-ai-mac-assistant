@@ -21,6 +21,17 @@ If the environment blocks SwiftPM's build sandbox, use `--disable-sandbox` with
 `swift build` and `swift test`. The existing Keychain integration test is skipped
 when `CI` is set; use `CI=1 swift test` to avoid accessing the real Keychain.
 
+## macOS integration tests
+
+`CoreAIMacAssistantIntegrationTests` runs real caffeinate processes, pseudo-terminal
+shells, and IOKit sleep assertions with fake battery state and policy time. Run it
+with `swift test --filter CoreAIMacAssistantIntegrationTests` (or as part of
+`swift test`). It needs no display or network. The suite skips when `forkpty` or
+pseudo-terminals are unavailable; the direct-spawn scenario additionally requires
+a runner without a controlling terminal, as on macOS CI. Each test scopes assertion
+listings to its own processes and tears down its children and sleep assertions.
+Bounded OS-readiness polling does not drive policy time.
+
 ## Code style and tests
 
 Follow nearby sources: four-space indentation, Swift naming conventions,
