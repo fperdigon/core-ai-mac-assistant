@@ -23,6 +23,17 @@ if ! printf '%s\n' "$version" | LC_ALL=C grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; th
     exit 1
 fi
 
+build_sha=${GITHUB_SHA:-$(git rev-parse HEAD 2>/dev/null || printf unknown)}
+if [ "$build_sha" != unknown ] && ! printf '%s\n' "$build_sha" | LC_ALL=C grep -Eq '^[0-9a-fA-F]{40}$'; then
+    printf '%s\n' 'Build SHA must be a full 40-character commit SHA or unknown.' >&2
+    exit 1
+fi
+build_channel=${BUILD_CHANNEL:-dev}
+case "$build_channel" in
+    stable|nightly|dev) ;;
+    *) printf '%s\n' 'BUILD_CHANNEL must be stable, nightly or dev.' >&2; exit 1 ;;
+esac
+
 # Keep build diagnostics separate so stdout ends with the bundle path.
 swift build -c release --arch arm64 --arch x86_64 "$@" >&2
 binary_dir=$(swift build -c release --arch arm64 --arch x86_64 "$@" --show-bin-path)
@@ -31,7 +42,8 @@ rm -rf "$bundle"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 cp "$binary_dir/CoreAIMacAssistant" "$bundle/Contents/MacOS/CoreAIMacAssistant"
 chmod 755 "$bundle/Contents/MacOS/CoreAIMacAssistant"
-sed "s/@VERSION@/$version/g" Resources/Info.plist > "$bundle/Contents/Info.plist"
+sed -e "s/@VERSION@/$version/g" -e "s/@GIT_SHA@/$build_sha/g" \
+    -e "s/@BUILD_CHANNEL@/$build_channel/g" Resources/Info.plist > "$bundle/Contents/Info.plist"
 plutil -lint "$bundle/Contents/Info.plist" >&2
 
 identity=${SIGN_IDENTITY:--}
@@ -40,5 +52,5 @@ if [ "$identity" = '-' ]; then
 else
     codesign --force --sign "$identity" --options runtime --timestamp "$bundle" >&2
 fi
-codesign --verify --strict "$bundle" >&2
+codesign --verify --deep --strict "$bundle" >&2
 printf '%s\n' "$bundle"

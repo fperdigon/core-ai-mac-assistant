@@ -6,10 +6,18 @@ The current app shows a menu bar icon, the project title, and Quit. The Settings
 UI and wiring are in progress. Controls and automatic protection described as
 **planned** below are not available in the app yet; core components already exist.
 
-**Planned:** once signed and notarized builds are published, download the macOS
-app from this repository's GitHub Releases, install it in Applications, and open
-it. Release installation is not available yet. Source builds require macOS 13 or
-later and Swift 6:
+## Install
+
+Requires macOS 13 or later (Apple silicon or Intel). Download the DMG and matching
+`.sha256` file from [GitHub Releases](https://github.com/fperdigon/core-ai-mac-assistant/releases).
+Verify the download with `shasum -a 256 -c CoreAIMacAssistant-0.1.0.dmg.sha256`
+using your downloaded checksum filename. Open the DMG, drag **Core AI Mac Assistant**
+to Applications, then eject it. On first launch, right-click the app and choose
+**Open**; if blocked, use **System Settings > Privacy & Security > Open Anyway**.
+Builds are ad-hoc signed and not notarized. Nightly pre-releases are unstable;
+choose a tagged release for regular use.
+
+Source builds require macOS 13 or later and Swift 6:
 
 ```sh
 swift build
