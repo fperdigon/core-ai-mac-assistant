@@ -379,11 +379,18 @@ private struct AboutPane: View {
             Section(AppInfo.name) {
                 Text("Protects your battery from forgotten sleep blockers.")
                     .font(.callout)
-                LabeledContent("Version", value: build.version)
+                LabeledContent(
+                    "Version",
+                    value: BuildInfo.aboutVersion(version: build.version, sha: build.sha, channel: build.channel)
+                )
                 LabeledContent("Build SHA", value: build.sha)
                 LabeledContent("Channel", value: build.channel)
                 LabeledContent("License", value: "Apache-2.0")
-                Link("GitHub repository", destination: URL(string: "https://github.com/fperdigon/core-ai-mac-assistant")!)
+                Link(
+                    "fperdigon/core-ai-mac-assistant",
+                    destination: URL(string: "https://github.com/fperdigon/core-ai-mac-assistant")!
+                )
+                Link("Made by Core AI", destination: URL(string: "https://github.com/fperdigon")!)
             }
         }
         .formStyle(.grouped)
