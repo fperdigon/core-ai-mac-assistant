@@ -46,6 +46,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let authorization = NSMenuItem(title: "Notifications: checking…", action: nil, keyEquivalent: "")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let engine = AssistantEngine(
+            powerMonitor: IOKitPowerMonitor(), assertionProvider: IOKitAssertionProvider(),
+            classifier: ProcessClassifier(processTable: SysctlProcessTable()),
+            caffeinateController: controller,
+            channels: [localNotifier, TelegramNotifier(settings: settings, secrets: KeychainSecretStore())],
+            terminator: SignalProcessTerminator(), settings: settings
+        )
+        if CommandLine.arguments.contains("--print-status") {
+            engine.refreshStatusSnapshot()
+            print(engine.statusText)
+            exit(0)
+        }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         let image = NSImage(systemSymbolName: "cup.and.saucer", accessibilityDescription: AppInfo.name)
         image?.isTemplate = true
@@ -72,13 +84,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         item.menu = menu
         statusItem = item
 
-        let engine = AssistantEngine(
-            powerMonitor: IOKitPowerMonitor(), assertionProvider: IOKitAssertionProvider(),
-            classifier: ProcessClassifier(processTable: SysctlProcessTable()),
-            caffeinateController: controller,
-            channels: [localNotifier, TelegramNotifier(settings: settings, secrets: KeychainSecretStore())],
-            terminator: SignalProcessTerminator(), settings: settings
-        )
         self.engine = engine
         engine.onChange = { [weak self] in self?.refreshStatus() }
         controller.restoreIfNeeded()

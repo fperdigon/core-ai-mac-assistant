@@ -94,7 +94,8 @@ struct IntegrationFixture {
             classifier: ProcessClassifier(processTable: SysctlProcessTable()),
             caffeinateController: controller, channels: [notices],
             terminator: SignalProcessTerminator(waiter: ProcessExitWaiter(process: process)),
-            settings: IntegrationSettings(), clock: time, tickScheduler: time
+            settings: IntegrationSettings(), clock: time, tickScheduler: time,
+            batteryEstimator: EmptyBatteryEstimator()
         )
     }
 
@@ -102,4 +103,8 @@ struct IntegrationFixture {
         engine.stop()
         controller.deactivate()
     }
+}
+
+private struct EmptyBatteryEstimator: BatteryEstimating {
+    func currentEstimate() -> BatteryEstimate { BatteryEstimate() }
 }

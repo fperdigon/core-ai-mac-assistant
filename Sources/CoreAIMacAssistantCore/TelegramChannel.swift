@@ -37,10 +37,11 @@ public struct TelegramChannel: Sendable {
     }
 
     public func send(
-        alert: BatteryAlert, blockers: [String]? = nil, silent: Bool = false
+        alert: BatteryAlert, blockers: [String]? = nil, silent: Bool = false,
+        estimate: BatteryEstimate = BatteryEstimate()
     ) async throws {
         let text = formatter.format(
-            alert: alert, blockers: blockers, includeMachineName: includeMachineName
+            alert: alert, blockers: blockers, includeMachineName: includeMachineName, estimate: estimate
         )
         try await client.sendMessage(chatID: chatID, text: text, silent: silent)
     }

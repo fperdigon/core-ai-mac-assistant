@@ -22,12 +22,12 @@ public final class AssistantEngine {
     public var onChange: (@MainActor @Sendable () -> Void)?
 
     public var statusText: String {
-        let percent = power.batteryPercent.map { "\($0)%" } ?? "Battery unknown"
-        let source = power.source == .ac ? "AC power" : "Battery power"
-        let awake = blockers.isEmpty ? "No sleep blockers" : "Keeping awake: " + blockers.joined(separator: ", ")
-        return "\(percent) · \(source) · \(awake)"
+        StatusLineFormatter.format(power: power, estimate: batteryEstimate, blockers: blockers)
     }
 
+    public private(set) var batteryEstimate: BatteryEstimate
+
+    private let batteryEstimator: any BatteryEstimating
     private let powerMonitor: any PowerMonitoring
     private let assertionProvider: any AssertionProviding
     private let classifier: any ProcessClassifying
@@ -58,8 +58,11 @@ public final class AssistantEngine {
         clock: any AssistantClock = SystemAssistantClock(),
         tickScheduler: any AssistantTickScheduling = AssistantTickScheduler(),
         tickInterval: TimeInterval = 10, ownPID: Int32 = getpid(),
-        currentUserID: UInt32 = getuid(), composer: any NoticeComposing = NoticeComposer()
+        currentUserID: UInt32 = getuid(), composer: any NoticeComposing = NoticeComposer(),
+        batteryEstimator: any BatteryEstimating = IOKitBatteryEstimator()
     ) {
+        self.batteryEstimator = batteryEstimator
+        batteryEstimate = batteryEstimator.currentEstimate()
         self.powerMonitor = powerMonitor
         self.assertionProvider = assertionProvider
         self.classifier = classifier
@@ -96,6 +99,16 @@ public final class AssistantEngine {
         await evaluate()
     }
 
+    /// Refresh a read-only snapshot without running policy actions or delivering alerts.
+    public func refreshStatusSnapshot() {
+        power = powerMonitor.current
+        batteryEstimate = batteryEstimator.currentEstimate()
+        let names = assertionProvider.currentAssertions().map {
+            isOwnAssertion($0) ? AppInfo.name : $0.processName
+        }
+        blockers = Array(Set(names)).sorted()
+    }
+
     public func stop() {
         isRunning = false
         evaluationPending = false
@@ -130,6 +143,7 @@ public final class AssistantEngine {
             alerts = scheduler
         }
         power = powerMonitor.current
+        batteryEstimate = batteryEstimator.currentEstimate()
         let now = clock.now
         var assertions = assertionProvider.currentAssertions().filter {
             $0.pid != ownPID || $0.name != CaffeinateController.assertionName || controller.isActive
@@ -192,7 +206,7 @@ public final class AssistantEngine {
         }
         blockers = Array(Set(remaining.map { isOwnAssertion($0) ? AppInfo.name : $0.processName })).sorted()
         if let alert = alerts.evaluate(power: power, blockerActive: !remaining.isEmpty, now: now) {
-            await notifier.deliver(composer.compose(alert: alert, blockers: blockers))
+            await notifier.deliver(composer.compose(alert: alert, blockers: blockers, estimate: batteryEstimate))
         }
         onChange?()
     }

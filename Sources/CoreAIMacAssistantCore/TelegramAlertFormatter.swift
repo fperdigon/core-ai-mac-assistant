@@ -14,15 +14,23 @@
 
 public protocol TelegramAlertFormatting: Sendable {
     func format(
-        alert: BatteryAlert, blockers: [String]?, includeMachineName: String?
+        alert: BatteryAlert, blockers: [String]?, includeMachineName: String?, estimate: BatteryEstimate
     ) -> String
+}
+
+public extension TelegramAlertFormatting {
+    func format(alert: BatteryAlert, blockers: [String]?, includeMachineName: String?) -> String {
+        format(alert: alert, blockers: blockers, includeMachineName: includeMachineName,
+               estimate: BatteryEstimate())
+    }
 }
 
 public struct TelegramAlertFormatter: TelegramAlertFormatting {
     public init() {}
 
     public func format(
-        alert: BatteryAlert, blockers: [String]? = nil, includeMachineName: String? = nil
+        alert: BatteryAlert, blockers: [String]? = nil, includeMachineName: String? = nil,
+        estimate: BatteryEstimate = BatteryEstimate()
     ) -> String {
         let level: String
         switch alert.level {
@@ -33,6 +41,7 @@ public struct TelegramAlertFormatter: TelegramAlertFormatting {
         let machine = includeMachineName.map { " (\($0))" } ?? ""
         let names = (blockers ?? []).filter { !$0.isEmpty }
         let keepingAwake = names.isEmpty ? "an active sleep assertion" : names.joined(separator: ", ")
-        return "\(level): battery at \(alert.batteryPercent)%\(machine). Keeping the Mac awake: \(keepingAwake)."
+        let remaining = StatusLineFormatter.alertEstimate(estimate)
+        return "\(level): battery at \(alert.batteryPercent)%\(machine)\(remaining). Keeping the Mac awake: \(keepingAwake)."
     }
 }
