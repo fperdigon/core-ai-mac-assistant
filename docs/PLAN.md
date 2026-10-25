@@ -2,7 +2,7 @@
 
 A native macOS menu bar app that watches for situations where the user is likely to make a mistake and warns them. The first feature is protecting the battery from a forgotten `caffeinate`.
 
-Working name: *Core AI Mac Assistant*. The public name is still undecided.
+Name: *Core AI Mac Assistant* (decided in #14; the name stays as is).
 
 ## Problem
 
@@ -107,5 +107,4 @@ Coding tasks are delegated to the Codex CLI as much as possible to save tokens; 
 
 ## Open questions
 
-- Public project name.
-- How to detect "started from a console" reliably across terminals (parent chain heuristics vs. controlling TTY).
+- How to keep the "started from a console" detection reliable across terminals as new terminal apps appear (the current rule combines the parent chain with a controlling TTY; see `ProcessClassifier`).
