@@ -18,6 +18,7 @@ import SwiftUI
 @MainActor
 struct SettingsView: View {
     @ObservedObject var model: SettingsModel
+    let checkForUpdates: () -> Void
     @State private var token = ""
     @State private var createBot = false
     @State private var isBusy = false
@@ -45,6 +46,14 @@ struct SettingsView: View {
                 )
             }
             telegramSection
+            UpdatesSettingsSection(
+                channel: Binding(
+                    get: { model.settings.updateChannel },
+                    set: { model.settings.updateChannel = $0; model.settings.skippedVersion = nil }
+                ),
+                automatically: $model.settings.checkForUpdatesAutomatically,
+                checkNow: checkForUpdates
+            )
         }
         .formStyle(.grouped)
         .padding()

@@ -25,8 +25,7 @@ Redaction is a safeguard, not a reason to log request bodies or credentials.
 
 ## Network access and messages
 
-The only intended network destination is the Telegram API, and only when the
-optional Telegram channel is enabled. Telegram receives the bot credential,
+The optional Telegram channel contacts the Telegram API only when enabled. Telegram receives the bot credential,
 the destination chat ID, and the message content needed to deliver alerts.
 Local notifications require no network access.
 
@@ -35,6 +34,21 @@ blocking sleep or what action was taken. They must not contain credentials,
 personal identifiers, filesystem locations, or command arguments. Including
 the Mac's name is opt-in and is disabled by default. Telegram processes and
 retains delivered messages according to its own policies.
+
+## Software updates
+
+Update checks contact `api.github.com` for the public releases of
+`fperdigon/core-ai-mac-assistant`. Automatic checking is enabled by default and
+runs at launch at most once every 24 hours, including failed attempts. Turn it
+off in Settings > Updates to make checks manual only. Installing an offered
+update downloads its release asset from GitHub and GitHub's release asset CDN.
+No update network access occurs except during a check or installation.
+
+Requests include ordinary HTTP connection metadata; no device identifiers,
+preferences, battery state, credentials, or telemetry are sent. The selected
+channel, skipped release, and last check time stay in local preferences.
+The updater verifies GitHub's SHA-256 digest when supplied, bundle identity,
+and the app's code signature before replacing the installed app.
 
 ## Removing everything
 
