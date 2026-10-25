@@ -2,7 +2,7 @@
 
 A macOS menu bar assistant that notices when you are about to make a mistake. The first feature: it stops a forgotten `caffeinate` from draining your battery after you unplug the charger.
 
-> Status: planning. Nothing is implemented yet. See [docs/PLAN.md](docs/PLAN.md).
+> Status: project scaffolding exists. Build with `swift build`, test with `swift test`, and run with `swift run CoreAIMacAssistant`.
 
 ## Planned features
 
