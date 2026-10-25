@@ -135,6 +135,21 @@ func appSettingsValidationHandlesNonfiniteDuration(duration: Double) {
     #expect(store.load().launchAtLogin)
 }
 
+@Test @MainActor func settingsModelKeepAwakeTogglePersistsDuration() {
+    let store = InMemorySettingsStore()
+    let model = SettingsModel(store: store, secrets: InMemorySecretStore(),
+                              transport: FakeTelegramTransport(), clock: FakeTelegramClock())
+    #expect(model.keepAwakeIndefinitely)
+    model.keepAwakeIndefinitely = false
+    #expect(model.settings.keepAwakeDefaultDuration == 3600)
+    #expect(store.load().keepAwakeDefaultDuration == 3600)
+    model.settings.keepAwakeDefaultDuration = 1800
+    #expect(!model.keepAwakeIndefinitely)
+    model.keepAwakeIndefinitely = true
+    #expect(model.settings.keepAwakeDefaultDuration == nil)
+    #expect(store.load().keepAwakeDefaultDuration == nil)
+}
+
 @Test @MainActor func settingsModelSavesTokenOnlyInSecretStoreAndSendsSilently() async throws {
     let credential = "synthetic-settings-credential"
     let transport = FakeTelegramTransport([

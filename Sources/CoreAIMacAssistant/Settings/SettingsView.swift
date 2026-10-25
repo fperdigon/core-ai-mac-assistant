@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import CoreAIMacAssistantCore
-import ServiceManagement
 import SwiftUI
 
 @MainActor
@@ -54,27 +53,24 @@ struct SettingsView: View {
             operation?.cancel()
             token = ""
         }
-        .onChange(of: model.settings.telegram.isEnabled) { enabled in
-            if !enabled { operation?.cancel() }
+        .onReceive(model.$settings) { settings in
+            if !settings.telegram.isEnabled { operation?.cancel() }
+        }
+        .onReceive(model.$launchAtLoginStatus) { message in
+            if let message { status = message }
         }
     }
 
     private var generalSection: some View {
         Section("General") {
-            Toggle("Keep awake indefinitely by default", isOn: Binding(
-                get: { model.settings.keepAwakeDefaultDuration == nil },
-                set: { model.settings.keepAwakeDefaultDuration = $0 ? nil : 3600 }
-            ))
+            Toggle("Keep awake indefinitely by default", isOn: $model.keepAwakeIndefinitely)
             if model.settings.keepAwakeDefaultDuration != nil {
                 TextField("Default keep-awake duration (seconds)", value: Binding(
                     get: { model.settings.keepAwakeDefaultDuration ?? 3600 },
                     set: { model.settings.keepAwakeDefaultDuration = $0 }
                 ), format: .number)
             }
-            Toggle("Launch at login", isOn: Binding(
-                get: { model.settings.launchAtLogin },
-                set: setLaunchAtLogin
-            ))
+            Toggle("Launch at login", isOn: $model.launchAtLogin)
             Text("Local notifications are always enabled.")
                 .font(.caption)
         }
@@ -124,7 +120,7 @@ struct SettingsView: View {
                     let candidate = token
                     token = ""
                     run("Bot validated. Token saved securely.") {
-                        try await model.validateAndSaveTelegramToken(candidate)
+                        _ = try await model.validateAndSaveTelegramToken(candidate)
                     }
                 }
                 .disabled(token.isEmpty || isBusy)
@@ -136,7 +132,7 @@ struct SettingsView: View {
                     .font(.caption)
                 HStack {
                     Button("Discover chat ID") {
-                        run("Chat ID discovered.") { try await model.discoverTelegramChatID() }
+                        run("Chat ID discovered.") { _ = try await model.discoverTelegramChatID() }
                     }
                     .disabled(isBusy)
                     Button("Send test message") {
@@ -172,30 +168,13 @@ struct SettingsView: View {
         )
     }
 
-    private func setLaunchAtLogin(_ enabled: Bool) {
-        do {
-            if enabled {
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
-            }
-            model.settings.launchAtLogin = enabled
-            if SMAppService.mainApp.status == .requiresApproval {
-                status = "Allow launch at login in System Settings > General > Login Items."
-            }
-        } catch {
-            model.settings.launchAtLogin = SMAppService.mainApp.status == .enabled
-            status = "Could not change launch at login. Check System Settings > General > Login Items."
-        }
-    }
-
-    private func run<Result>(_ success: String, action: @escaping @MainActor () async throws -> Result) {
+    private func run(_ success: String, action: @escaping @MainActor () async throws -> Void) {
         isBusy = true
         status = nil
         operation = Task { @MainActor in
             defer { isBusy = false }
             do {
-                _ = try await action()
+                try await action()
                 try Task.checkCancellation()
                 status = success
             } catch is CancellationError {

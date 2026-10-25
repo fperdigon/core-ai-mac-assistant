@@ -14,6 +14,7 @@
 
 import Combine
 import Foundation
+import ServiceManagement
 
 public enum SettingsSetupError: Error, Sendable, Equatable, LocalizedError {
     case telegramDisabled
@@ -36,6 +37,35 @@ public final class SettingsModel: ObservableObject {
             let validated = settings.validated()
             if settings != validated { settings = validated }
             store.save(settings)
+        }
+    }
+
+    @Published public private(set) var launchAtLoginStatus: String?
+
+    // Computed properties let SwiftUI use key-path bindings without converting
+    // actor-isolated Bool setters into Binding closures on older compilers.
+    public var keepAwakeIndefinitely: Bool {
+        get { settings.keepAwakeDefaultDuration == nil }
+        set { settings.keepAwakeDefaultDuration = newValue ? nil : 3600 }
+    }
+
+    public var launchAtLogin: Bool {
+        get { settings.launchAtLogin }
+        set {
+            do {
+                if newValue {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+                settings.launchAtLogin = newValue
+                if SMAppService.mainApp.status == .requiresApproval {
+                    launchAtLoginStatus = "Allow launch at login in System Settings > General > Login Items."
+                }
+            } catch {
+                settings.launchAtLogin = SMAppService.mainApp.status == .enabled
+                launchAtLoginStatus = "Could not change launch at login. Check System Settings > General > Login Items."
+            }
         }
     }
 
