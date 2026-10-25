@@ -10,5 +10,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - run: sh scripts/scan-secrets.sh
+      - run: sh scripts/test-scan-secrets.sh
       - run: swift build
       - run: swift test
