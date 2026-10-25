@@ -15,7 +15,7 @@
 import Foundation
 
 public struct PolicyEngine: PolicyEvaluating {
-    public let settings: PolicySettings
+    public var settings: PolicySettings
 
     private var seenPIDs: Set<Int32> = []
     private var terminations: [Termination] = []

@@ -49,7 +49,8 @@ public struct SysctlProcessTable: ProcessTableProviding {
             pid: pid,
             parentPID: info.kp_eproc.e_ppid,
             name: name,
-            hasControllingTerminal: info.kp_eproc.e_tdev != noDevice
+            hasControllingTerminal: info.kp_eproc.e_tdev != noDevice,
+            userID: info.kp_eproc.e_ucred.cr_uid
         )
     }
 }

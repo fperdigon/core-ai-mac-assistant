@@ -16,35 +16,112 @@ import AppKit
 import CoreAIMacAssistantCore
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem?
+    private let controller = CaffeinateController()
+    private let localNotifier = LocalNotifier()
+    private let settings = SettingsModel(
+        store: UserDefaultsSettingsStore(defaults: .standard), secrets: KeychainSecretStore()
+    )
+    private var engine: AssistantEngine?
+    private var settingsWindow: SettingsWindowController?
+    private let statusLine = NSMenuItem(title: "Reading power state…", action: nil, keyEquivalent: "")
+    private let keepAwake = NSMenuItem(title: "Keep awake", action: nil, keyEquivalent: "")
+    private let authorization = NSMenuItem(title: "Notifications: checking…", action: nil, keyEquivalent: "")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        let image = NSImage(
-            systemSymbolName: "cup.and.saucer",
-            accessibilityDescription: AppInfo.name
-        )
+        let image = NSImage(systemSymbolName: "cup.and.saucer", accessibilityDescription: AppInfo.name)
         image?.isTemplate = true
         item.button?.image = image
 
         let menu = NSMenu()
         menu.autoenablesItems = false
-        let titleItem = NSMenuItem(title: AppInfo.menuTitle(), action: nil, keyEquivalent: "")
-        titleItem.isEnabled = false
-        menu.addItem(titleItem)
-
-        let quitItem = NSMenuItem(
-            title: "Quit",
-            action: #selector(NSApplication.terminate(_:)),
-            keyEquivalent: "q"
-        )
-        quitItem.keyEquivalentModifierMask = .command
-        quitItem.target = NSApp
-        menu.addItem(quitItem)
-
+        menu.delegate = self
+        statusLine.isEnabled = false
+        menu.addItem(statusLine)
+        keepAwake.target = self
+        keepAwake.action = #selector(toggleKeepAwake)
+        menu.addItem(keepAwake)
+        authorization.isEnabled = false
+        menu.addItem(authorization)
+        menu.addItem(.separator())
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+        let quit = NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quit.target = NSApp
+        menu.addItem(quit)
         item.menu = menu
         statusItem = item
+
+        let engine = AssistantEngine(
+            powerMonitor: IOKitPowerMonitor(), assertionProvider: IOKitAssertionProvider(),
+            classifier: ProcessClassifier(processTable: SysctlProcessTable()),
+            caffeinateController: controller,
+            channels: [localNotifier, TelegramNotifier(settings: settings, secrets: KeychainSecretStore())],
+            terminator: SignalProcessTerminator(), settings: settings
+        )
+        self.engine = engine
+        engine.onChange = { [weak self] in self?.refreshStatus() }
+        controller.restoreIfNeeded()
+        controller.onChange = { [weak self] _ in
+            self?.refreshStatus()
+            Task { @MainActor [weak self] in await self?.engine?.evaluate() }
+        }
+        Task { @MainActor in
+            await engine.start()
+            // The system authorization state persists across launches.
+            updateAuthorization(await localNotifier.requestAuthorizationIfNeeded())
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        engine?.stop()
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        refreshStatus()
+        Task { @MainActor in updateAuthorization(await localNotifier.authorizationState()) }
+    }
+
+    private func refreshStatus() {
+        statusLine.title = engine?.statusText ?? "Reading power state…"
+        keepAwake.state = controller.isActive ? .on : .off
+    }
+
+    private func updateAuthorization(_ state: AuthorizationState) {
+        authorization.target = self
+        authorization.action = nil
+        authorization.isEnabled = false
+        switch state {
+        case .authorized: authorization.title = "Notifications: authorized"
+        case .notDetermined: authorization.title = "Notifications: not requested"
+        case .unavailable: authorization.title = "Notifications: unavailable"
+        case .denied:
+            authorization.title = "Notifications denied — Open System Settings…"
+            authorization.action = #selector(openNotificationSettings)
+            authorization.isEnabled = true
+        }
+    }
+
+    @objc private func toggleKeepAwake() {
+        if controller.isActive {
+            controller.deactivate()
+        } else {
+            controller.activate(duration: settings.settings.keepAwakeDefaultDuration)
+        }
+    }
+
+    @objc private func openSettings() {
+        if settingsWindow == nil { settingsWindow = SettingsWindowController(model: settings) }
+        settingsWindow?.show()
+    }
+
+    @objc private func openNotificationSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
+            NSWorkspace.shared.open(url)
+        }
     }
 }
 

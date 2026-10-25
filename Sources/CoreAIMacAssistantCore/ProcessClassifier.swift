@@ -34,6 +34,13 @@ public struct ProcessClassifier: Sendable {
         self.processTable = processTable
     }
 
+    public func isOwnedByCurrentUser(_ pid: Int32, currentUserID: UInt32) -> Bool {
+        guard let snapshot = processTable.snapshot(of: pid), snapshot.pid == pid else {
+            return false
+        }
+        return snapshot.userID == currentUserID
+    }
+
     public func origin(of pid: Int32) -> ProcessOrigin {
         var currentPID = pid
         var visited: Set<Int32> = []

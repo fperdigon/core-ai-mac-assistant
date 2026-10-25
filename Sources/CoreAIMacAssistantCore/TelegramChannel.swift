@@ -29,6 +29,13 @@ public struct TelegramChannel: Sendable {
         self.includeMachineName = includeMachineName
     }
 
+    public func send(notice: Notice, silent: Bool = false) async throws {
+        let machine = includeMachineName.map { " (\($0))" } ?? ""
+        try await client.sendMessage(
+            chatID: chatID, text: "\(notice.title)\(machine)\n\(notice.body)", silent: silent
+        )
+    }
+
     public func send(
         alert: BatteryAlert, blockers: [String]? = nil, silent: Bool = false
     ) async throws {
