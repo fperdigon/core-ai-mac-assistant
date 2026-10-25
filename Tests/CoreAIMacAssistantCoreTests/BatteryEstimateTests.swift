@@ -113,7 +113,7 @@ func batteryEstimateRejectsUnknownMinutes(minutes: Int) {
     ]).timeRemaining == 2_520.0)
 }
 
-@Test func statusLineFormatsAllPowerStatesAndPreservesBlockers() {
+@Test func statusLineFormatsOnlyBatteryForAllPowerStates() {
     let examples: [(PowerState, BatteryEstimate, String)] = [
         (PowerState(source: .battery, batteryPercent: 99, isCharging: false),
          BatteryEstimate(timeRemaining: 416 * 60, powerWatts: 8.07922),
@@ -129,10 +129,7 @@ func batteryEstimateRejectsUnknownMinutes(minutes: Int) {
          BatteryEstimate(), "Battery unknown · plugged in"),
     ]
     for (power, estimate, expected) in examples {
-        #expect(StatusLineFormatter.format(power: power, estimate: estimate, blockers: [])
-            == expected + " · No sleep blockers")
-        #expect(StatusLineFormatter.format(power: power, estimate: estimate, blockers: ["MediaPlayer", "caffeinate"])
-            == expected + " · Keeping awake: MediaPlayer, caffeinate")
+        #expect(StatusLineFormatter.format(power: power, estimate: estimate) == expected)
     }
 }
 
@@ -150,9 +147,9 @@ func batteryEstimateRejectsUnknownMinutes(minutes: Int) {
     #expect(StatusLineFormatter.duration(nil) == nil)
     let line = StatusLineFormatter.format(
         power: PowerState(source: .battery, batteryPercent: 40, isCharging: false),
-        estimate: BatteryEstimate(timeRemaining: .nan, powerWatts: .infinity), blockers: []
+        estimate: BatteryEstimate(timeRemaining: .nan, powerWatts: .infinity)
     )
-    #expect(line == "Battery 40% · on battery · estimating… · No sleep blockers")
+    #expect(line == "Battery 40% · on battery · estimating…")
 }
 
 @Test(arguments: [AlertLevel.normal, .urgent, .critical])
@@ -221,11 +218,13 @@ private final class StatusDependencies: AssistantClock, AssistantTickScheduling,
     )
     engine.refreshStatusSnapshot()
     #expect(dependencies.notices.isEmpty)
-    #expect(engine.statusText == "Battery 40% · on battery · 1h 20m left · 8.1 W · Keeping awake: MediaPlayer")
+    #expect(engine.statusText == "Battery 40% · on battery · 1h 20m left · 8.1 W")
+    #expect(engine.blockersText == "Also keeping awake: MediaPlayer")
     await engine.start()
     #expect(dependencies.notices.contains { $0.kind == .batteryAlert && $0.body.contains("about 1h 20m left") })
     estimator.set(BatteryEstimate())
     await dependencies.tick?()
-    #expect(engine.statusText == "Battery 40% · on battery · estimating… · Keeping awake: MediaPlayer")
+    #expect(engine.statusText == "Battery 40% · on battery · estimating…")
+    #expect(engine.blockersText == "Also keeping awake: MediaPlayer")
     engine.stop()
 }

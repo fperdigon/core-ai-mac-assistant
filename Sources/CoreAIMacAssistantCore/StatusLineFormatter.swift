@@ -16,7 +16,7 @@ import Foundation
 
 public enum StatusLineFormatter {
     public static func format(
-        power: PowerState, estimate: BatteryEstimate, blockers: [String]
+        power: PowerState, estimate: BatteryEstimate
     ) -> String {
         let battery = power.batteryPercent.map { "Battery \($0)%" } ?? "Battery unknown"
         let source = power.isCharging ? "charging" : (power.source == .battery ? "on battery" : "plugged in")
@@ -31,9 +31,12 @@ public enum StatusLineFormatter {
                 parts.append(String(format: "%.1f W", locale: Locale(identifier: "en_US_POSIX"), watts))
             }
         }
-        let awake = blockers.isEmpty ? "No sleep blockers" : "Keeping awake: " + blockers.joined(separator: ", ")
-        parts.append(awake)
         return parts.joined(separator: " · ")
+    }
+
+    public static func blockersLine(blockers: [String]) -> String? {
+        guard !blockers.isEmpty else { return nil }
+        return "Also keeping awake: " + blockers.joined(separator: ", ")
     }
 
     public static func duration(_ seconds: TimeInterval?) -> String? {

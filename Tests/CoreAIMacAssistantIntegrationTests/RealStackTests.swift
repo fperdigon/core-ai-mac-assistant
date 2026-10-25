@@ -72,7 +72,7 @@ struct RealStackTests {
         try eventually("assertion release") { assertions.currentAssertions().isEmpty }
     }
 
-    @Test func controllerAssertionIsListedReleasedAndReleasedAtThreshold() async throws {
+    @Test func controllerAssertionIsHiddenAndReleasedAtThreshold() async throws {
         let assertions = OwnedAssertions(pid: getpid(), name: CaffeinateController.assertionName)
         let fixture = IntegrationFixture(assertions: assertions)
         defer { fixture.stop() }
@@ -86,7 +86,7 @@ struct RealStackTests {
         try eventually("assertion registration") { !assertions.currentAssertions().isEmpty }
         await fixture.engine.start()
         #expect(fixture.controller.isActive)
-        #expect(fixture.engine.blockers.contains(AppInfo.name))
+        #expect(fixture.engine.blockers.isEmpty)
         fixture.power.current = PowerState(source: .battery, batteryPercent: 15, isCharging: false)
         await fixture.time.fire()
         #expect(!fixture.controller.isActive)
@@ -94,7 +94,7 @@ struct RealStackTests {
         #expect(fixture.notices.notices.contains { $0.title == "Keep-awake released" })
     }
 
-    @Test func otherAssertionIsReportedAndNeverTerminated() async throws {
+    @Test func otherOwnPIDAssertionIsHiddenAndNeverTerminated() async throws {
         let holder = IOKitSleepAssertionHolder()
         let name = "Integration report-only sleep assertion"
         let handle = try #require(holder.create(name: name))
@@ -110,11 +110,11 @@ struct RealStackTests {
         await fixture.time.fire()
         fixture.power.current = PowerState(source: .battery, batteryPercent: 1, isCharging: false)
         await fixture.time.fire()
-        #expect(fixture.notices.contains(.keepAwakeDetected, pid: getpid()))
-        #expect(fixture.notices.notices.contains { $0.title == "Sleep blocker reported" })
+        #expect(!fixture.notices.contains(.keepAwakeDetected, pid: getpid()))
+        #expect(!fixture.notices.notices.contains { $0.title == "Sleep blocker reported" })
         #expect(!fixture.notices.contains(.processTerminated, pid: getpid()))
         #expect(!fixture.notices.notices.contains { $0.title == "Stopping keep-awake process" })
-        #expect(fixture.engine.blockers.contains(assertion.processName))
+        #expect(fixture.engine.blockers.isEmpty)
         #expect(!assertions.currentAssertions().isEmpty)
     }
 }
