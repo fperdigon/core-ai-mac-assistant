@@ -17,15 +17,22 @@ import CoreAIMacAssistantCore
 import SwiftUI
 
 @MainActor
+final class SettingsTabSelection: ObservableObject {
+    @Published var selectedTab: SettingsView.Tab = .general
+}
+
+@MainActor
 final class SettingsWindowController: NSWindowController {
+    private let selection = SettingsTabSelection()
+
     init(model: SettingsModel, checkForUpdates: @escaping () -> Void) {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 640, height: 780),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 560),
+            styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered, defer: false
         )
-        window.title = "Settings"
-        window.contentViewController = NSHostingController(rootView: SettingsView(model: model, checkForUpdates: checkForUpdates))
+        window.title = "Core AI Mac Assistant Settings"
+        window.contentViewController = NSHostingController(rootView: SettingsView(model: model, checkForUpdates: checkForUpdates, selection: selection))
         window.isReleasedWhenClosed = false
         super.init(window: window)
         window.center()
@@ -37,5 +44,32 @@ final class SettingsWindowController: NSWindowController {
         showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    func captureSnapshots(in directory: URL, completion: @escaping () -> Void) {
+        let tabs = SettingsView.Tab.allCases
+        captureSnapshot(at: 0, tabs: tabs, directory: directory, completion: completion)
+    }
+
+    private func captureSnapshot(at index: Int, tabs: [SettingsView.Tab], directory: URL, completion: @escaping () -> Void) {
+        guard index < tabs.count else {
+            completion()
+            return
+        }
+        let tab = tabs[index]
+        selection.selectedTab = tab
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.captureSnapshot(tab: tab, directory: directory)
+            self?.captureSnapshot(at: index + 1, tabs: tabs, directory: directory, completion: completion)
+        }
+    }
+
+    private func captureSnapshot(tab: SettingsView.Tab, directory: URL) {
+        guard let contentView = window?.contentView else { return }
+        let bounds = contentView.bounds
+        guard let bitmap = contentView.bitmapImageRepForCachingDisplay(in: bounds) else { return }
+        contentView.cacheDisplay(in: bounds, to: bitmap)
+        guard let png = bitmap.representation(using: .png, properties: [:]) else { return }
+        try? png.write(to: directory.appendingPathComponent("settings-\(tab.rawValue).png"))
     }
 }

@@ -83,6 +83,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         engine.onChange = { [weak self] in self?.refreshStatus() }
         controller.restoreIfNeeded()
         updates.checkInBackgroundIfDue()
+        if CommandLine.arguments.contains("--show-settings") { openSettings() }
+        if let argumentIndex = CommandLine.arguments.firstIndex(of: "--snapshot-settings"),
+           CommandLine.arguments.indices.contains(argumentIndex + 1) {
+            let directory = URL(fileURLWithPath: CommandLine.arguments[argumentIndex + 1], isDirectory: true)
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            openSettings()
+            settingsWindow?.captureSnapshots(in: directory) { NSApp.terminate(nil) }
+        }
         controller.onChange = { [weak self] _ in
             self?.refreshStatus()
             Task { @MainActor [weak self] in await self?.engine?.evaluate() }
