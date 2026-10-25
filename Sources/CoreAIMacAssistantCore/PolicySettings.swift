@@ -14,7 +14,7 @@
 
 import Foundation
 
-public struct PolicySettings: Sendable, Equatable {
+public struct PolicySettings: Codable, Sendable, Equatable {
     public let killThresholdPercent: Int
     public let maxKillsPerWindow: Int
     public let killWindow: TimeInterval
