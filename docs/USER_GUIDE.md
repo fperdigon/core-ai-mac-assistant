@@ -13,10 +13,10 @@ kill threshold.
 
 ## Install
 
-Follow the numbered installation steps in [README.md](../README.md#install),
-including checksum verification and first-launch security approval. The app
-requires macOS 13 or later on Apple silicon or Intel. Builds are ad-hoc signed
-and not notarized.
+Install with Homebrew or manually from a DMG; follow the corresponding steps in
+[README.md](../README.md#install) without repeating them here. The app requires
+macOS 13 or later on Apple silicon or Intel. Builds are ad-hoc signed and not
+notarized.
 
 Source builds require macOS 13 or later and Swift 6:
 

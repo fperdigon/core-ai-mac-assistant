@@ -129,6 +129,18 @@ scripts/verify-dmg.sh MacPocketKnife-0.1.0.dmg
 ```
 
 Open the DMG, drag the app to Applications, and eject the image. On first launch,
-right-click the app and choose **Open**. If macOS blocks it, use **System Settings
-> Privacy & Security > Open Anyway**, then confirm Open. This is expected for an
-ad-hoc signed app without notarization. Do not disable Gatekeeper globally.
+use **System Settings > Privacy & Security > Open Anyway**, then confirm Open.
+This is expected for an ad-hoc signed app without notarization. Do not disable
+Gatekeeper globally.
+
+## Homebrew tap
+
+The `fperdigon/homebrew-tap` repository bumps the cask daily to the newest stable
+release, reading the version and SHA-256 from its release asset. To trigger a
+bump manually:
+
+```sh
+gh workflow run bump.yml -R fperdigon/homebrew-tap
+```
+
+Nightlies are never published to the tap.
