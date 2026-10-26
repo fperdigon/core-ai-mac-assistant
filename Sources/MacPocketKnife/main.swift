@@ -55,9 +55,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             terminator: SignalProcessTerminator(), settings: settings
         )
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        let image = NSImage(systemSymbolName: "cup.and.saucer", accessibilityDescription: AppInfo.name)
-        image?.isTemplate = true
-        item.button?.image = image
+        if let image = NSImage(named: "MenuBarIcon") {
+            image.isTemplate = true
+            image.size = NSSize(width: 18, height: 18)
+            item.button?.image = image
+        } else {
+            let image = NSImage(systemSymbolName: "cup.and.saucer", accessibilityDescription: AppInfo.name)
+            image?.isTemplate = true
+            item.button?.image = image
+        }
 
         let menu = NSMenu()
         menu.autoenablesItems = false
@@ -73,9 +79,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         authorization.isEnabled = false
         menu.addItem(authorization)
         menu.addItem(.separator())
-        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
+        let aboutItem = NSMenuItem(title: "About MacPocketKnife", action: #selector(showAbout), keyEquivalent: "")
+        aboutItem.target = self
+        menu.addItem(aboutItem)
         menu.addItem(updates.menuItem())
         let quit = NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
@@ -87,12 +96,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         engine.onChange = { [weak self] in self?.refreshStatus() }
         controller.restoreIfNeeded()
         updates.checkInBackgroundIfDue()
-        if CommandLine.arguments.contains("--show-settings") { openSettings() }
+        if CommandLine.arguments.contains("--show-settings") { showSettings() }
         if let argumentIndex = CommandLine.arguments.firstIndex(of: "--snapshot-settings"),
            CommandLine.arguments.indices.contains(argumentIndex + 1) {
             let directory = URL(fileURLWithPath: CommandLine.arguments[argumentIndex + 1], isDirectory: true)
             try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            openSettings()
+            showSettings()
             settingsWindow?.captureSnapshots(in: directory) { NSApp.terminate(nil) }
         }
         controller.onChange = { [weak self] _ in
@@ -146,9 +155,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    @objc private func openSettings() {
+    @objc private func showSettings() {
+        openSettings(tab: nil)
+    }
+
+    @objc private func showAbout() {
+        openSettings(tab: .about)
+    }
+
+    private func openSettings(tab: SettingsView.Tab?) {
         if settingsWindow == nil { settingsWindow = SettingsWindowController(model: settings, checkForUpdates: { [weak self] in self?.updates.checkNow() }) }
-        settingsWindow?.show()
+        settingsWindow?.show(tab: tab)
     }
 
     @objc private func openNotificationSettings() {
