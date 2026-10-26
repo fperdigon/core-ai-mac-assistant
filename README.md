@@ -32,6 +32,41 @@ is treated as app-originated.
 
 ## Install
 
+### Homebrew (recommended)
+
+Install:
+
+```bash
+brew install --cask fperdigon/tap/macpocketknife
+```
+
+The cask removes the quarantine flag so Gatekeeper does not block this ad-hoc
+signed, non-notarized app.
+
+Upgrade:
+
+```bash
+brew upgrade --cask macpocketknife
+```
+
+For Homebrew installs, use `brew upgrade` to keep Homebrew's recorded version
+current; the app's own updater can make that version stale. Automatic update
+checks can be turned off in **Settings > Updates**.
+
+Uninstall:
+
+```bash
+brew uninstall --cask macpocketknife
+```
+
+Add `--zap` to remove preferences and caches:
+
+```bash
+brew uninstall --cask macpocketknife --zap
+```
+
+### Manual install (DMG)
+
 1. Download `MacPocketKnife-<version>.dmg` and its matching `.sha256` file from
    [GitHub Releases](https://github.com/fperdigon/macpocketknife/releases).
    The latest stable release is at the top; nightlies are pre-releases.
@@ -71,8 +106,6 @@ token, delete the Keychain item for service `macpocketknife`.
 ### Requirements
 
 macOS 13 or later; Apple silicon or Intel.
-
-Homebrew installation is planned but is not available yet.
 
 ## Build, test, and run from source
 

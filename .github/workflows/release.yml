@@ -75,7 +75,7 @@ jobs:
         run: |
           prev_tag="$(git describe --tags --abbrev=0 --match 'v*' "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
           {
-            echo 'Unsigned (ad-hoc signed, not notarized). On first launch, right-click > Open.'
+            echo 'Ad-hoc signed, not notarized. Install with Homebrew (brew install --cask fperdigon/tap/macpocketknife) or see the README for the first-launch steps (System Settings > Privacy & Security > Open Anyway).'
             echo
             if [ -n "$prev_tag" ]; then
               echo "## Changes since $prev_tag"
