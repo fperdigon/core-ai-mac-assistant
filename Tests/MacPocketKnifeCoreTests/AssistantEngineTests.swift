@@ -107,7 +107,8 @@ private struct EngineFixture {
     let engine: AssistantEngine
 
     init(source: PowerSource = .battery, percent: Int? = 80, console: Bool = false, userID: UInt32? = 42,
-         policy: any PolicyEvaluating = PolicyEngine()) {
+         policy: any PolicyEvaluating = PolicyEngine(),
+         alerts: any AlertScheduling = AlertScheduler()) {
         power = FakePowerMonitor(current: enginePower(source, percent))
         controller = CaffeinateController(holder: holder, scheduler: FakeKeepAwakeScheduler(),
                                           store: FakeKeepAwakeStateStore())
@@ -121,6 +122,7 @@ private struct EngineFixture {
         engine = AssistantEngine(
             powerMonitor: power, assertionProvider: assertions,
             classifier: ProcessClassifier(processTable: table), policyEngine: policy,
+            alertScheduler: alerts,
             caffeinateController: controller,
             channels: [notices], terminator: terminator, settings: settings,
             clock: clock, tickScheduler: ticks, ownPID: 99, currentUserID: 42,
@@ -224,7 +226,7 @@ private struct EngineFixture {
     #expect(fixture.terminator.calls == [42])
     #expect(!fixture.notices.notices.contains { $0.kind == .processTerminated })
     #expect(fixture.notices.notices.contains { $0.title == "Termination failed" })
-    #expect(fixture.engine.blockers == ["MediaPlayer", "caffeinate"])
+    #expect(fixture.engine.blockers == ["caffeinate"])
     fixture.engine.stop()
 }
 
@@ -255,7 +257,7 @@ private struct EngineFixture {
 
 @Test @MainActor func engineAlertsStopOnACOrWhenBlockersDisappear() async {
     let fixture = EngineFixture()
-    fixture.assertions.set([engineAssertion(pid: 44, name: "MediaPlayer")])
+    fixture.assertions.set([engineAssertion()])
     await fixture.engine.start()
     func batteryCount() -> Int { fixture.notices.notices.filter { $0.kind == .batteryAlert }.count }
     #expect(batteryCount() == 1)
@@ -267,12 +269,12 @@ private struct EngineFixture {
     fixture.power.push(enginePower())
     await fixture.engine.evaluate()
     #expect(batteryCount() == 2)
-    fixture.assertions.set([])
+    fixture.assertions.set([engineAssertion(pid: 44, name: "Claude")])
     await fixture.ticks.fire()
     fixture.clock.advance(1000)
     await fixture.ticks.fire()
     #expect(batteryCount() == 2)
-    fixture.assertions.set([engineAssertion(pid: 44, name: "MediaPlayer")])
+    fixture.assertions.set([engineAssertion()])
     await fixture.ticks.fire()
     #expect(batteryCount() == 3)
     #expect(fixture.terminator.calls.isEmpty)
@@ -313,43 +315,73 @@ private final class RecordingDisplayPolicy: PolicyEvaluating, @unchecked Sendabl
     }
 }
 
-@Test @MainActor func engineCleansDisplayAndAlertsButPolicyReceivesEveryAssertion() async {
+@Test @MainActor func engineOtherAssertionsAreInformationOnlyAndPolicySeesAll() async {
     let policy = RecordingDisplayPolicy()
     let fixture = EngineFixture(policy: policy)
     let assertions = [
-        engineAssertion(pid: 99, name: AppInfo.name),
         engineAssertion(pid: 2, name: "powerd"),
         engineAssertion(pid: 3, name: "coreaudiod"),
         engineAssertion(pid: 4, name: "Claude"),
     ]
     fixture.assertions.set(assertions)
     fixture.engine.refreshStatusSnapshot()
+    #expect(fixture.engine.blockersText == nil)
+    fixture.settings.settings.showOtherSleepBlockers = true
+    fixture.engine.refreshStatusSnapshot()
     #expect(fixture.engine.blockersText == "Also keeping awake: Claude, audio playback")
     await fixture.engine.start()
     #expect(policy.assertions.map(\.assertion) == assertions)
-    #expect(fixture.engine.blockers == ["Claude", "audio playback"])
-    let alert = fixture.notices.notices.first { $0.kind == .batteryAlert }
-    #expect(alert?.body == "Battery at 80%. Keeping the Mac awake: Claude, audio playback.")
-    fixture.assertions.set(Array(assertions.prefix(2)))
-    fixture.clock.advance(600)
+    #expect(fixture.notices.notices.isEmpty)
+    fixture.clock.advance(1000)
+    await fixture.ticks.fire()
+    #expect(fixture.notices.notices.isEmpty)
+    #expect(fixture.terminator.calls.isEmpty)
+    fixture.settings.settings.showOtherSleepBlockers = false
     await fixture.ticks.fire()
     #expect(fixture.engine.blockersText == nil)
-    #expect(policy.assertions.count == 2)
-    // Alert eligibility still uses raw assertions, even when all display names are hidden.
-    #expect(fixture.notices.notices.filter { $0.kind == .batteryAlert }.count == 2)
     fixture.engine.stop()
 }
 
-@Test @MainActor func engineDetectionMessagesHideInternalsAndMapAudioPlayback() async {
-    let fixture = EngineFixture()
-    fixture.assertions.set([
-        engineAssertion(pid: 99, name: AppInfo.name),
-        engineAssertion(pid: 2, name: "powerd"),
-        engineAssertion(pid: 3, name: "coreaudiod"),
-    ])
+private final class RecordingEngineAlerts: AlertScheduling, @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [Bool] = []
+    var activeValues: [Bool] { lock.withLock { values } }
+    func evaluate(power: PowerState, blockerActive: Bool, now: Date) -> BatteryAlert? {
+        lock.withLock { values.append(blockerActive) }
+        return nil
+    }
+}
+
+@Test(arguments: [false, true])
+@MainActor func engineClaudeAloneNeverTriggersActionsOrAlerts(showOthers: Bool) async {
+    let alerts = RecordingEngineAlerts()
+    let fixture = EngineFixture(percent: 1, alerts: alerts)
+    fixture.settings.settings.showOtherSleepBlockers = showOthers
+    fixture.assertions.set([engineAssertion(pid: 44, name: "Claude")])
     await fixture.engine.start()
-    let detections = fixture.notices.notices.filter { $0.kind == .keepAwakeDetected }
-    #expect(detections.count == 1)
-    #expect(detections.first?.body == "audio playback (PID 3) is keeping the Mac awake. Report only.")
+    fixture.clock.advance(1000)
+    await fixture.ticks.fire()
+    #expect(alerts.activeValues == [false, false])
+    #expect(fixture.notices.notices.isEmpty)
+    #expect(fixture.terminator.calls.isEmpty)
+    fixture.engine.stop()
+}
+
+@Test(arguments: [false, true])
+@MainActor func engineWatchedAssertionsTriggerAlertsWithoutOtherNames(own: Bool) async {
+    let fixture = EngineFixture()
+    fixture.settings.settings.showOtherSleepBlockers = true
+    var assertions = [engineAssertion(pid: 44, name: "Claude")]
+    if own {
+        fixture.controller.activate()
+    } else {
+        assertions.append(engineAssertion())
+    }
+    fixture.assertions.set(assertions)
+    await fixture.engine.start()
+    let alerts = fixture.notices.notices.filter { $0.kind == .batteryAlert }
+    #expect(alerts.count == 1)
+    #expect(!fixture.notices.notices.contains { $0.body.contains("Claude") })
+    #expect(alerts.first?.body.contains(own ? "the app's own keep-awake" : "caffeinate") == true)
     fixture.engine.stop()
 }

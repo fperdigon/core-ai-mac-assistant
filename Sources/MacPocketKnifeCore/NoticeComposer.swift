@@ -35,8 +35,8 @@ public struct NoticeComposer: NoticeComposing {
         case .urgent: title = "Urgent battery alert"
         case .critical: title = "Critical battery alert"
         }
-        let names = blockers.compactMap { SleepBlockerSummary.displayName(for: $0) }
-        let keepingAwake = names.isEmpty ? "an active sleep assertion" : names.joined(separator: ", ")
+        let names = SleepBlockerSummary.alertNames(blockers)
+        let keepingAwake = names.isEmpty ? "caffeinate or the app's own keep-awake" : names.joined(separator: ", ")
         let remaining = StatusLineFormatter.alertEstimate(estimate)
         return Notice(
             kind: .batteryAlert, title: title,
@@ -54,13 +54,6 @@ public struct NoticeComposer: NoticeComposing {
             return Notice(
                 kind: .keepAwakeDetected, title: "Keep-awake process detected",
                 body: "\(name) (PID \(process.pid)) is keeping the Mac awake."
-            )
-        case .notifyReportOnly(let classified):
-            let process = classified.assertion
-            let name = SleepBlockerSummary.displayName(for: process.processName) ?? "an active sleep assertion"
-            return Notice(
-                kind: .keepAwakeDetected, title: "Sleep blocker reported",
-                body: "\(name) (PID \(process.pid)) is keeping the Mac awake. Report only."
             )
         case .terminate(let pid, let processName, let reason):
             let explanation: String

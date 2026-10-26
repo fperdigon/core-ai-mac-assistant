@@ -1,6 +1,6 @@
 # MacPocketKnife: Plan
 
-MacPocketKnife is a personal pocket multi-tool for the Mac menu bar. Its first tool is a battery guard for forgotten `caffeinate` processes and other sleep blockers.
+MacPocketKnife is a personal pocket multi-tool for the Mac menu bar. Its first tool is a battery guard for forgotten `caffeinate` processes and the app’s own keep-awake.
 
 ## Tools
 
@@ -8,12 +8,12 @@ New tools will be added as separate modules. This rename does not restructure th
 
 ## Problem
 
-`caffeinate` (or any sleep-blocking app) is often left running. After unplugging the charger the Mac never sleeps and the battery drains to zero without the user noticing.
+`caffeinate` is often left running. After unplugging the charger the Mac never sleeps and the battery drains to zero without the user noticing.
 
 ## Goals
 
 - Replace `caffeinate` with an app-controlled toggle, and keep control of the sleep state in one place.
-- Detect sleep assertions created elsewhere and act on them according to clear rules.
+- Detect external `caffeinate` assertions and act on them according to clear rules.
 - Warn the user with escalating alerts while on battery.
 - Work fully offline with local notifications; Telegram is an optional extra channel.
 - Be safe to distribute as free software: no personal data in the repository, secrets only in the Keychain.
@@ -45,7 +45,7 @@ Swift package, menu bar app (same style as `macsh`). Modules are kept small and 
 `AssistantEngine` runs on the main actor and evaluates power changes and periodic
 10-second assertion snapshots. It classifies ownership and origin, applies the
 stateful policy, executes guarded process termination or releases its own assertion,
-and schedules battery alerts for the remaining blockers. Settings are read on every
+and schedules battery alerts only for remaining `caffeinate` processes or its own keep-awake. Settings are read on every
 evaluation without resetting detection, retry history, or alert cadence. Protocols
 isolate clocks, ticks, providers, signals, and notification channels for deterministic
 tests. Local and optional Telegram delivery fan out independently; the app target
@@ -58,7 +58,7 @@ only constructs adapters and presents engine and controller state in the menu.
 | Started from a console (shell, Terminal, iTerm, tmux or ssh in the parent chain) | Terminated immediately; the user is told. The app takes over. |
 | Started by another app, or not classifiable | Only reported. Terminated when the battery reaches the kill threshold (default 15%) on battery power. |
 | The app's own assertion | Indefinite by default. Released at the kill threshold like the others. |
-| Other sleep blockers (media players, other keep-awake tools) | Reported only, never terminated. |
+| Other sleep blockers (media players, other keep-awake tools) | Ignored by default (can be listed in the menu, information only) |
 
 Only processes owned by the current user can be terminated. A retry limit prevents a kill loop if something keeps relaunching `caffeinate`.
 
@@ -73,7 +73,7 @@ Thresholds are configurable. Defaults:
 | below 20% | every 1 minute | urgent, loudest sound |
 | at the kill threshold | once, before and after the action | action notice |
 
-Alerts stop as soon as the charger is connected or the blocking assertion is gone.
+Alerts stop as soon as the charger is connected or no `caffeinate` process or own keep-awake assertion remains. Other apps never trigger notices or battery alerts; their menu listing is opt-in and informational only.
 
 ## Channels
 

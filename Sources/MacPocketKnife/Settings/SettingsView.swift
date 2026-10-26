@@ -186,6 +186,10 @@ private struct ProtectionPane: View {
         Form {
             alertsSection
             killRuleSection
+            Toggle(
+                "Also list other apps that keep the Mac awake (information only)",
+                isOn: $model.settings.showOtherSleepBlockers
+            )
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)

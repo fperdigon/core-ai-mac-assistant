@@ -182,7 +182,7 @@ private final class MutableBatteryEstimator: BatteryEstimating, @unchecked Senda
 
 private struct StatusAssertions: AssertionProviding {
     func currentAssertions() -> [SleepAssertion] {
-        [SleepAssertion(pid: 42, processName: "MediaPlayer", type: "PreventSystemSleep", name: "Playback")]
+        [SleepAssertion(pid: 42, processName: "caffeinate", type: "PreventSystemSleep", name: "Playback")]
     }
 }
 
@@ -219,12 +219,12 @@ private final class StatusDependencies: AssistantClock, AssistantTickScheduling,
     engine.refreshStatusSnapshot()
     #expect(dependencies.notices.isEmpty)
     #expect(engine.statusText == "Battery 40% · on battery · 1h 20m left · 8.1 W")
-    #expect(engine.blockersText == "Also keeping awake: MediaPlayer")
+    #expect(engine.blockersText == "Also keeping awake: caffeinate")
     await engine.start()
     #expect(dependencies.notices.contains { $0.kind == .batteryAlert && $0.body.contains("about 1h 20m left") })
     estimator.set(BatteryEstimate())
     await dependencies.tick?()
     #expect(engine.statusText == "Battery 40% · on battery · estimating…")
-    #expect(engine.blockersText == "Also keeping awake: MediaPlayer")
+    #expect(engine.blockersText == "Also keeping awake: caffeinate")
     engine.stop()
 }

@@ -94,9 +94,9 @@ struct RealStackTests {
         #expect(fixture.notices.notices.contains { $0.title == "Keep-awake released" })
     }
 
-    @Test func otherOwnPIDAssertionIsHiddenAndNeverTerminated() async throws {
+    @Test func nonCaffeinateAssertionIsIgnoredAndNeverTerminated() async throws {
         let holder = IOKitSleepAssertionHolder()
-        let name = "Integration report-only sleep assertion"
+        let name = "Integration ignored sleep assertion"
         let handle = try #require(holder.create(name: name))
         defer { holder.release(handle) }
         let assertions = OwnedAssertions(pid: getpid(), name: name)
@@ -111,7 +111,7 @@ struct RealStackTests {
         fixture.power.current = PowerState(source: .battery, batteryPercent: 1, isCharging: false)
         await fixture.time.fire()
         #expect(!fixture.notices.contains(.keepAwakeDetected, pid: getpid()))
-        #expect(!fixture.notices.notices.contains { $0.title == "Sleep blocker reported" })
+        #expect(fixture.notices.notices.isEmpty)
         #expect(!fixture.notices.contains(.processTerminated, pid: getpid()))
         #expect(!fixture.notices.notices.contains { $0.title == "Stopping keep-awake process" })
         #expect(fixture.engine.blockers.isEmpty)

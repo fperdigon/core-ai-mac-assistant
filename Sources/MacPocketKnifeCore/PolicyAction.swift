@@ -26,6 +26,5 @@ public enum PolicyAction: Sendable, Equatable {
     case terminate(pid: Int32, processName: String, reason: TerminationReason)
     case releaseOwnAssertion
     case notifyDetected(ClassifiedAssertion)
-    case notifyReportOnly(ClassifiedAssertion)
     case notifyTerminationSkipped(pid: Int32, reason: TerminationSkipReason)
 }
