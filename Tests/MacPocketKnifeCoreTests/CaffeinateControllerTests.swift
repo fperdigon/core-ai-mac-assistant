@@ -42,6 +42,7 @@ private final class KeepAwakeEvents {
     #expect(fixture.controller.isActive)
     #expect(fixture.controller.expiryDate == nil)
     #expect(fixture.holder.createdNames == ["MacPocketKnife keep-awake"])
+    #expect(fixture.holder.createdKinds == [.systemSleep])
     #expect(fixture.store.state == KeepAwakeState(isActive: true))
     #expect(fixture.scheduler.pendingCount == 0)
     fixture.scheduler.advance(by: 1_000_000)
@@ -211,4 +212,87 @@ private final class KeepAwakeEvents {
     if let handle = holder.create(name: "MacPocketKnife keep-awake") {
         holder.release(handle)
     }
+}
+
+@Test @MainActor func keepUnlockedUsesDisplayAssertionAndRestoresItsDeadline() {
+    let holder = FakeSleepAssertionHolder()
+    let scheduler = FakeKeepAwakeScheduler()
+    let store = FakeKeepAwakeStateStore()
+    var controller: CaffeinateController? = CaffeinateController(
+        holder: holder, scheduler: scheduler, store: store,
+        name: CaffeinateController.keepUnlockedAssertionName, kind: .displaySleep
+    )
+    controller?.activate(duration: 60)
+    #expect(holder.createdNames == ["MacPocketKnife keep-unlocked"])
+    #expect(holder.createdKinds == [.displaySleep])
+    controller = nil
+    #expect(holder.releasedHandles.count == 1)
+    scheduler.advance(by: 20)
+    let restored = CaffeinateController(
+        holder: holder, scheduler: scheduler, store: store,
+        name: CaffeinateController.keepUnlockedAssertionName, kind: .displaySleep
+    )
+    restored.restoreIfNeeded()
+    #expect(restored.isActive)
+    #expect(restored.expiryDate == scheduler.now.addingTimeInterval(40))
+    scheduler.advance(by: 40)
+    #expect(!restored.isActive)
+    #expect(store.state == nil)
+    #expect(holder.createdKinds == [.displaySleep, .displaySleep])
+    #expect(holder.releasedHandles.count == 2)
+}
+
+@Test @MainActor func controllerUsesConfiguredStateStoreKeyAndRestoresIndefinitely() {
+    let key = "keepUnlockedTest-\(UUID().uuidString)"
+    let defaults = UserDefaults.standard
+    defer { defaults.removeObject(forKey: key) }
+    let holder = FakeSleepAssertionHolder()
+    let scheduler = FakeKeepAwakeScheduler()
+    let controller = CaffeinateController(
+        holder: holder, scheduler: scheduler,
+        name: CaffeinateController.keepUnlockedAssertionName, kind: .displaySleep,
+        stateStoreKey: key
+    )
+    controller.activate()
+    let saved = UserDefaultsKeepAwakeStateStore(defaults: defaults, key: key)
+    #expect(saved.load() == KeepAwakeState(isActive: true))
+    let restored = CaffeinateController(
+        holder: holder, scheduler: scheduler,
+        name: CaffeinateController.keepUnlockedAssertionName, kind: .displaySleep,
+        stateStoreKey: key
+    )
+    restored.restoreIfNeeded()
+    #expect(restored.isActive)
+    #expect(restored.expiryDate == nil)
+    #expect(holder.createdKinds == [.displaySleep, .displaySleep])
+    restored.deactivate()
+    #expect(saved.load() == nil)
+    #expect(controller.isActive)
+    controller.deactivate()
+}
+
+@Test @MainActor func keepAwakeAndKeepUnlockedStoresAreIndependent() throws {
+    let suite = "KeepUnlocked-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let awake = UserDefaultsKeepAwakeStateStore(defaults: defaults)
+    let unlocked = UserDefaultsKeepAwakeStateStore(
+        defaults: defaults, key: CaffeinateController.keepUnlockedStateKey
+    )
+    awake.save(KeepAwakeState(isActive: true))
+    #expect(defaults.data(forKey: "keepAwakeState") != nil)
+    #expect(unlocked.load() == nil)
+    unlocked.save(KeepAwakeState(isActive: true, expiryDate: Date(timeIntervalSince1970: 100)))
+    awake.save(nil)
+    #expect(unlocked.load()?.expiryDate == Date(timeIntervalSince1970: 100))
+    #expect(awake.load() == nil)
+}
+
+@Test func assertionHolderDefaultsToSystemSleepThroughProtocol() {
+    let fake = FakeSleepAssertionHolder()
+    let holder: any SleepAssertionHolding = fake
+    let handle = holder.create(name: "Default assertion")
+    #expect(handle != nil)
+    #expect(fake.createdKinds == [.systemSleep])
+    #expect(fake.createdNames == ["Default assertion"])
 }

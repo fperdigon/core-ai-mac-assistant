@@ -7,7 +7,8 @@ for offline use with local alerts and an optional Telegram channel.
 ## Status
 
 The app runs in the menu bar and monitors battery power and sleep blockers. It
-shows battery time remaining and watts, and provides a Keep awake toggle. A
+Keep unlocked keeps the display awake for long jobs and debugger sessions.
+It shows battery time remaining and watts, and provides a Keep awake toggle. A
 `caffeinate` process started from a console is terminated immediately; app-started `caffeinate` is reported and handled at the configured kill threshold.
 Battery alerts escalate by severity and can be delivered through macOS local
 notifications or optional Telegram. Settings are available in tabs, and updates

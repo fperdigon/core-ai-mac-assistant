@@ -18,6 +18,12 @@ import Foundation
 public final class CaffeinateController {
     public static let assertionName = "MacPocketKnife keep-awake"
 
+    public static let keepUnlockedAssertionName = "MacPocketKnife keep-unlocked"
+    public static let keepUnlockedStateKey = "keepUnlockedState"
+
+    public let name: String
+    public let kind: SleepAssertionKind
+
     public var isActive: Bool { assertion != nil }
     public private(set) var expiryDate: Date?
     /// Called on the main actor only when the active state changes.
@@ -33,11 +39,16 @@ public final class CaffeinateController {
     public init(
         holder: any SleepAssertionHolding = IOKitSleepAssertionHolder(),
         scheduler: any KeepAwakeScheduling = KeepAwakeScheduler(),
-        store: any KeepAwakeStateStore = UserDefaultsKeepAwakeStateStore(defaults: .standard)
+        store: (any KeepAwakeStateStore)? = nil,
+        name: String = CaffeinateController.assertionName,
+        kind: SleepAssertionKind = .systemSleep,
+        stateStoreKey: String = "keepAwakeState"
     ) {
         self.holder = holder
         self.scheduler = scheduler
-        self.store = store
+        self.store = store ?? UserDefaultsKeepAwakeStateStore(defaults: .standard, key: stateStoreKey)
+        self.name = name
+        self.kind = kind
     }
 
     deinit {
@@ -85,7 +96,7 @@ public final class CaffeinateController {
     }
 
     private func start(expiringAt date: Date?) {
-        guard let handle = holder.create(name: Self.assertionName) else {
+        guard let handle = holder.create(name: name, kind: kind) else {
             store.save(nil)
             return
         }

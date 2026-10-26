@@ -34,8 +34,10 @@ public enum SleepBlockerSummary {
 
     public static let ownKeepAwakeName = "the app's own keep-awake"
 
+    public static let ownKeepUnlockedName = "the app's own keep-unlocked (display kept awake)"
+
     static func alertNames(_ names: [String]) -> [String] {
-        names.filter { $0 == "caffeinate" || $0 == ownKeepAwakeName }
+        names.filter { $0 == "caffeinate" || $0 == ownKeepAwakeName || $0 == ownKeepUnlockedName }
     }
 
     static func displayName(for processName: String) -> String? {

@@ -102,6 +102,7 @@ private struct EngineFixture {
     let ticks = EngineTicks()
     let notices = EngineNotices()
     let holder = FakeSleepAssertionHolder()
+    let unlockController: CaffeinateController
     let controller: CaffeinateController
     let terminator: EngineTerminator
     let engine: AssistantEngine
@@ -112,6 +113,10 @@ private struct EngineFixture {
         power = FakePowerMonitor(current: enginePower(source, percent))
         controller = CaffeinateController(holder: holder, scheduler: FakeKeepAwakeScheduler(),
                                           store: FakeKeepAwakeStateStore())
+        unlockController = CaffeinateController(
+            holder: holder, scheduler: FakeKeepAwakeScheduler(), store: FakeKeepAwakeStateStore(),
+            name: CaffeinateController.keepUnlockedAssertionName, kind: .displaySleep
+        )
         terminator = EngineTerminator(assertions)
         let table = FakeProcessTable([
             ProcessSnapshot(pid: 42, parentPID: 41, name: "caffeinate",
@@ -123,7 +128,7 @@ private struct EngineFixture {
             powerMonitor: power, assertionProvider: assertions,
             classifier: ProcessClassifier(processTable: table), policyEngine: policy,
             alertScheduler: alerts,
-            caffeinateController: controller,
+            caffeinateController: controller, keepUnlockedController: unlockController,
             channels: [notices], terminator: terminator, settings: settings,
             clock: clock, tickScheduler: ticks, ownPID: 99, currentUserID: 42,
             batteryEstimator: EmptyBatteryEstimator()
@@ -383,5 +388,44 @@ private final class RecordingEngineAlerts: AlertScheduling, @unchecked Sendable 
     #expect(alerts.count == 1)
     #expect(!fixture.notices.notices.contains { $0.body.contains("Claude") })
     #expect(alerts.first?.body.contains(own ? "the app's own keep-awake" : "caffeinate") == true)
+    fixture.engine.stop()
+}
+
+@Test(arguments: [false, true])
+@MainActor func engineKeepUnlockedIsOwnStateAndReleasesAtThreshold(reported: Bool) async {
+    let fixture = EngineFixture(percent: 80)
+    fixture.settings.settings.showOtherSleepBlockers = true
+    fixture.unlockController.activate()
+    if reported {
+        fixture.assertions.set([SleepAssertion(
+            pid: 99, processName: "MacPocketKnife", type: "PreventUserIdleDisplaySleep",
+            name: CaffeinateController.keepUnlockedAssertionName
+        )])
+    }
+    fixture.engine.refreshStatusSnapshot()
+    #expect(fixture.engine.blockers.isEmpty)
+    await fixture.engine.start()
+    for percent in [49, 19] {
+        fixture.power.push(enginePower(.battery, percent))
+        await fixture.engine.evaluate()
+    }
+    let alerts = fixture.notices.notices.filter { $0.kind == .batteryAlert }
+    #expect(alerts.map(\.level) == [.normal, .urgent, .critical])
+    #expect(alerts.allSatisfy { $0.body.contains("display kept awake") })
+    #expect(fixture.unlockController.isActive)
+    #expect(!fixture.controller.isActive)
+    #expect(fixture.engine.blockers.isEmpty)
+    #expect(!fixture.notices.notices.contains { $0.kind == .keepAwakeDetected })
+    fixture.controller.activate()
+    fixture.power.push(enginePower(.battery, 15))
+    await fixture.engine.evaluate()
+    #expect(!fixture.unlockController.isActive)
+    #expect(!fixture.controller.isActive)
+    #expect(fixture.holder.releasedHandles.count == 2)
+    #expect(fixture.terminator.calls.isEmpty)
+    #expect(fixture.engine.blockers.isEmpty)
+    let count = fixture.notices.notices.count
+    await fixture.engine.evaluate()
+    #expect(fixture.notices.notices.count == count)
     fixture.engine.stop()
 }

@@ -13,6 +13,8 @@
 // limitations under the License.
 
 import Darwin
+import Foundation
+import IOKit.pwr_mgt
 import Testing
 import MacPocketKnifeCore
 
@@ -117,4 +119,27 @@ struct RealStackTests {
         #expect(fixture.engine.blockers.isEmpty)
         #expect(!assertions.currentAssertions().isEmpty)
     }
+}
+
+@Test func displaySleepAssertionAppearsInIOKitAndReleases() throws {
+    let holder = IOKitSleepAssertionHolder()
+    let name = "MacPocketKnife integration keep-unlocked"
+    let handle = try #require(holder.create(name: name, kind: .displaySleep))
+    var released = false
+    defer { if !released { holder.release(handle) } }
+    func ownAssertions() throws -> [[String: Any]] {
+        var result: Unmanaged<CFDictionary>?
+        let status = IOPMCopyAssertionsByProcess(&result)
+        let dictionary = result?.takeRetainedValue()
+        #expect(status == kIOReturnSuccess)
+        let byProcess = try #require(dictionary as? [NSNumber: [[String: Any]]])
+        return byProcess[NSNumber(value: getpid())] ?? []
+    }
+    let assertions = try ownAssertions()
+    let assertion = try #require(assertions.first { $0[kIOPMAssertionNameKey] as? String == name })
+    #expect(assertion[kIOPMAssertionTypeKey] as? String == "PreventUserIdleDisplaySleep")
+    holder.release(handle)
+    released = true
+    let remaining = try ownAssertions()
+    #expect(!remaining.contains { $0[kIOPMAssertionNameKey] as? String == name })
 }
