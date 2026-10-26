@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-Copyright 2026 The Core AI Mac Assistant contributors
+Copyright 2026 Francisco Perdigon Romero and contributors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,13 +18,13 @@ limitations under the License.
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>Core AI Mac Assistant</string>
+    <string>MacPocketKnife</string>
     <key>CFBundleDisplayName</key>
-    <string>Core AI Mac Assistant</string>
+    <string>MacPocketKnife</string>
     <key>CFBundleIdentifier</key>
-    <string>io.github.fperdigon.core-ai-mac-assistant</string>
+    <string>io.github.fperdigon.macpocketknife</string>
     <key>CFBundleExecutable</key>
-    <string>CoreAIMacAssistant</string>
+    <string>MacPocketKnife</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -40,6 +40,6 @@ limitations under the License.
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright 2026 The Core AI Mac Assistant contributors. Licensed under Apache-2.0.</string>
+    <string>Copyright 2026 Francisco Perdigon Romero and contributors</string>
 </dict>
 </plist>

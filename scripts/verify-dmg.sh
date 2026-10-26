@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2026 The Core AI Mac Assistant contributors
+# Copyright 2026 Francisco Perdigon Romero and contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,18 +50,18 @@ verify_one() (
     apps=("$mnt/"*.app)
     [ "${#apps[@]}" -eq 1 ] || fail 'expected exactly one app'
     app="${apps[0]}"
-    [ "${app##*/}" = 'Core AI Mac Assistant.app' ] || fail 'unexpected app name'
+    [ "${app##*/}" = 'MacPocketKnife.app' ] || fail 'unexpected app name'
     [ -L "$mnt/Applications" ] && [ "$(readlink "$mnt/Applications")" = /Applications ] || fail 'no Applications -> /Applications symlink'
     plist="$app/Contents/Info.plist"
     [ -d "$app/Contents/Resources" ] || fail 'missing Resources directory'
     plutil -lint "$plist" >/dev/null || fail 'invalid Info.plist'
     key() { /usr/libexec/PlistBuddy -c "Print :$1" "$plist"; }
-    [ "$(key CFBundleIdentifier)" = io.github.fperdigon.core-ai-mac-assistant ] || fail 'unexpected bundle identifier'
+    [ "$(key CFBundleIdentifier)" = io.github.fperdigon.macpocketknife ] || fail 'unexpected bundle identifier'
     [ "$(key CFBundlePackageType)" = APPL ] || fail 'invalid package type'
     [ -n "$(key CFBundleShortVersionString)" ] || fail 'missing version'
     [ "$(key LSUIElement)" = true ] || fail 'LSUIElement must be true'
-    [ "$(key CFBundleExecutable)" = CoreAIMacAssistant ] || fail 'unexpected executable name'
-    exe="$app/Contents/MacOS/CoreAIMacAssistant"
+    [ "$(key CFBundleExecutable)" = MacPocketKnife ] || fail 'unexpected executable name'
+    exe="$app/Contents/MacOS/MacPocketKnife"
     [ -x "$exe" ] || fail 'missing executable or executable bit'
     for architecture in arm64 x86_64; do
         lipo "$exe" -verify_arch "$architecture" || fail "missing $architecture architecture"

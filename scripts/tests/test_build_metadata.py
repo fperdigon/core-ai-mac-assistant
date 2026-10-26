@@ -1,4 +1,4 @@
-# Copyright 2026 The Core AI Mac Assistant contributors
+# Copyright 2026 Francisco Perdigon Romero and contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ class BuildMetadataTests(unittest.TestCase):
             (self.tmp / directory).mkdir()
         for file in ("scripts/make-app-bundle.sh", "Resources/Info.plist", "VERSION"):
             shutil.copy(ROOT / file, self.tmp / file)
-        (self.tmp / "bin/CoreAIMacAssistant").write_text("fixture")
+        (self.tmp / "bin/MacPocketKnife").write_text("fixture")
         self.tool("swift", '#!/bin/sh\ncase "$*" in *--show-bin-path*) echo "$FAKE_BIN" ;; esac\n')
         self.tool("codesign", "#!/bin/sh\nexit 0\n")
         self.tool("git", '#!/bin/sh\n[ -n "${FAKE_SHA:-}" ] || exit 1\nprintf "%s\\n" "$FAKE_SHA"\n')
@@ -52,7 +52,7 @@ class BuildMetadataTests(unittest.TestCase):
                                 env=dict(self.env, **env), capture_output=True, text=True)
         self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
         if expected == 0:
-            return plistlib.loads((self.tmp / "build/Core AI Mac Assistant.app/Contents/Info.plist").read_bytes())
+            return plistlib.loads((self.tmp / "build/MacPocketKnife.app/Contents/Info.plist").read_bytes())
         return None
 
     def test_channels_and_environment_sha(self):

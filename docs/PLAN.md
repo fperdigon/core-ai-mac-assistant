@@ -1,8 +1,10 @@
-# Core AI Mac Assistant: Plan
+# MacPocketKnife: Plan
 
-A native macOS menu bar app that watches for situations where the user is likely to make a mistake and warns them. The first feature is protecting the battery from a forgotten `caffeinate`.
+MacPocketKnife is a personal pocket multi-tool for the Mac menu bar. Its first tool is a battery guard for forgotten `caffeinate` processes and other sleep blockers.
 
-Name: *Core AI Mac Assistant* (decided in #14; the name stays as is).
+## Tools
+
+New tools will be added as separate modules. This rename does not restructure the existing code.
 
 ## Problem
 

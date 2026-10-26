@@ -1,4 +1,7 @@
-# User guide
+# MacPocketKnife user guide
+
+MacPocketKnife is a personal pocket multi-tool for the Mac menu bar. Its first
+tool is a battery guard for forgotten `caffeinate` processes and other sleep blockers.
 
 ## Availability and installation
 
@@ -9,9 +12,9 @@ UI and wiring are in progress. Controls and automatic protection described as
 ## Install
 
 Requires macOS 13 or later (Apple silicon or Intel). Download the DMG and matching
-`.sha256` file from [GitHub Releases](https://github.com/fperdigon/core-ai-mac-assistant/releases).
-Verify the download with `shasum -a 256 -c CoreAIMacAssistant-0.1.0.dmg.sha256`
-using your downloaded checksum filename. Open the DMG, drag **Core AI Mac Assistant**
+`.sha256` file from [GitHub Releases](https://github.com/fperdigon/macpocketknife/releases).
+Verify the download with `shasum -a 256 -c MacPocketKnife-0.1.0.dmg.sha256`
+using your downloaded checksum filename. Open the DMG, drag **MacPocketKnife**
 to Applications, then eject it. On first launch, right-click the app and choose
 **Open**; if blocked, use **System Settings > Privacy & Security > Open Anyway**.
 Builds are ad-hoc signed and not notarized. Nightly pre-releases are unstable;
@@ -22,7 +25,7 @@ Source builds require macOS 13 or later and Swift 6:
 ```sh
 swift build
 swift test
-swift run CoreAIMacAssistant
+swift run MacPocketKnife
 ```
 
 Use the menu bar menu's Quit command to exit.
@@ -130,7 +133,7 @@ To remove everything:
 1. Disable Telegram and Keep Awake if those planned controls are available, then
    quit the app and remove the installed app or local build products.
 2. If setup or core use stored a token, delete the generic-password Keychain item
-   with service `core-ai-mac-assistant` and account `telegramBotToken` in Keychain
+   with service `macpocketknife` and account `telegramBotToken` in Keychain
    Access. If a custom service was used, remove its corresponding item instead.
 3. Remove the app's UserDefaults preferences using the installed app's actual
    preferences domain. Uninstalling alone does not delete preferences or tokens.

@@ -1,4 +1,4 @@
-# Copyright 2026 The Core AI Mac Assistant contributors
+# Copyright 2026 Francisco Perdigon Romero and contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ class PublishNightlyTests(unittest.TestCase):
             (self.tmp / directory).mkdir()
         for name in ("publish-nightly.sh", "release-notes.sh"):
             shutil.copy(ROOT / "scripts" / name, self.tmp / "scripts" / name)
-        self.dmg = self.tmp / "dist/CoreAIMacAssistant-0.1.0.dmg"
+        self.dmg = self.tmp / "dist/MacPocketKnife-0.1.0.dmg"
         self.dmg.write_bytes(b"fixture")
         pathlib.Path(str(self.dmg) + ".sha256").write_text("stale checksum")
         self.tool("date", "#!/bin/sh\necho 2026-01-02\n")
@@ -89,7 +89,8 @@ esac
         self.assertNotIn("delete nightly-20260101-bbbbbbb", calls)
         sums = list((self.tmp / "dist").glob("*.sha256"))
         self.assertEqual(len(sums), 1)
-        self.assertIn("-nightly-2026-01-02-aaaaaaa.dmg", sums[0].read_text())
+        self.assertEqual(sums[0].name, "MacPocketKnife-0.1.0-nightly-2026-01-02-aaaaaaa.dmg.sha256")
+        self.assertIn("MacPocketKnife-0.1.0-nightly-2026-01-02-aaaaaaa.dmg", sums[0].read_text())
         result = subprocess.run(["shasum", "-a", "256", "-c", sums[0].name],
                                 cwd=self.tmp / "dist", capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

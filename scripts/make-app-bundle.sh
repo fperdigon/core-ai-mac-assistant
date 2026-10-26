@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright 2026 The Core AI Mac Assistant contributors
+# Copyright 2026 Francisco Perdigon Romero and contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,11 +37,11 @@ esac
 # Keep build diagnostics separate so stdout ends with the bundle path.
 swift build -c release --arch arm64 --arch x86_64 "$@" >&2
 binary_dir=$(swift build -c release --arch arm64 --arch x86_64 "$@" --show-bin-path)
-bundle="$root/build/Core AI Mac Assistant.app"
+bundle="$root/build/MacPocketKnife.app"
 rm -rf "$bundle"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
-cp "$binary_dir/CoreAIMacAssistant" "$bundle/Contents/MacOS/CoreAIMacAssistant"
-chmod 755 "$bundle/Contents/MacOS/CoreAIMacAssistant"
+cp "$binary_dir/MacPocketKnife" "$bundle/Contents/MacOS/MacPocketKnife"
+chmod 755 "$bundle/Contents/MacOS/MacPocketKnife"
 sed -e "s/@VERSION@/$version/g" -e "s/@GIT_SHA@/$build_sha/g" \
     -e "s/@BUILD_CHANNEL@/$build_channel/g" Resources/Info.plist > "$bundle/Contents/Info.plist"
 plutil -lint "$bundle/Contents/Info.plist" >&2
