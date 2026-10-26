@@ -1,5 +1,5 @@
 // swift-tools-version: 6.0
-// Copyright 2026 The Core AI Mac Assistant contributors
+// Copyright 2026 Francisco Perdigon Romero and contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,25 +16,25 @@
 import PackageDescription
 
 let package = Package(
-    name: "CoreAIMacAssistant",
+    name: "MacPocketKnife",
     platforms: [.macOS(.v13)],
     products: [
-        .library(name: "CoreAIMacAssistantCore", targets: ["CoreAIMacAssistantCore"]),
-        .executable(name: "CoreAIMacAssistant", targets: ["CoreAIMacAssistant"]),
+        .library(name: "MacPocketKnifeCore", targets: ["MacPocketKnifeCore"]),
+        .executable(name: "MacPocketKnife", targets: ["MacPocketKnife"]),
     ],
     targets: [
-        .target(name: "CoreAIMacAssistantCore"),
+        .target(name: "MacPocketKnifeCore"),
         .executableTarget(
-            name: "CoreAIMacAssistant",
-            dependencies: ["CoreAIMacAssistantCore"]
+            name: "MacPocketKnife",
+            dependencies: ["MacPocketKnifeCore"]
         ),
         .testTarget(
-            name: "CoreAIMacAssistantCoreTests",
-            dependencies: ["CoreAIMacAssistantCore"]
+            name: "MacPocketKnifeCoreTests",
+            dependencies: ["MacPocketKnifeCore"]
         ),
         .testTarget(
-            name: "CoreAIMacAssistantIntegrationTests",
-            dependencies: ["CoreAIMacAssistantCore"]
+            name: "MacPocketKnifeIntegrationTests",
+            dependencies: ["MacPocketKnifeCore"]
         ),
     ]
 )

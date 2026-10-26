@@ -1,4 +1,4 @@
-# Copyright 2026 The Core AI Mac Assistant contributors
+# Copyright 2026 Francisco Perdigon Romero and contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -65,7 +65,7 @@ jobs:
       - name: Check built release version
         if: github.ref_type == 'tag'
         run: |
-          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' 'build/Core AI Mac Assistant.app/Contents/Info.plist')"
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' 'build/MacPocketKnife.app/Contents/Info.plist')"
           test "$GITHUB_REF_NAME" = "v$version"
       - name: Disk usage after build
         if: always()

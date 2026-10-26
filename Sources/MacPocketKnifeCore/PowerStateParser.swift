@@ -1,0 +1,38 @@
+// Copyright 2026 Francisco Perdigon Romero and contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import Foundation
+import IOKit.ps
+
+public enum PowerStateParser {
+    public static func parse(_ description: [String: Any]) -> PowerState {
+        let source: PowerSource = description[kIOPSPowerSourceStateKey] as? String
+            == kIOPSBatteryPowerValue ? .battery : .ac
+        var batteryPercent: Int?
+        if let current = description[kIOPSCurrentCapacityKey] as? NSNumber,
+            let maximum = description[kIOPSMaxCapacityKey] as? NSNumber,
+            current.doubleValue.isFinite,
+            maximum.doubleValue.isFinite,
+            maximum.doubleValue > 0
+        {
+            let percent = current.doubleValue / maximum.doubleValue * 100
+            batteryPercent = Int(min(100, max(0, percent)).rounded())
+        }
+        return PowerState(
+            source: source,
+            batteryPercent: batteryPercent,
+            isCharging: description[kIOPSIsChargingKey] as? Bool ?? false
+        )
+    }
+}

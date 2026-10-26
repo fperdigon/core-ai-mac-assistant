@@ -1,5 +1,5 @@
 <!--
-Copyright 2026 The Core AI Mac Assistant contributors
+Copyright 2026 Francisco Perdigon Romero and contributors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Releasing Core AI Mac Assistant
+# Releasing MacPocketKnife
 
 The app is a pure Swift package. Releases contain a universal Apple silicon and
 Intel app for macOS 13 or later in an **ad-hoc signed DMG, not notarized**.
@@ -48,8 +48,8 @@ sh scripts/test-make-app-bundle.sh
 BUILD_CHANNEL=dev scripts/build-release.sh
 ```
 
-The output is `dist/CoreAIMacAssistant-0.1.0.dmg` (using the current `VERSION`)
-and its `.sha256` file. The DMG holds `Core AI Mac Assistant.app` and an
+The output is `dist/MacPocketKnife-0.1.0.dmg` (using the current `VERSION`)
+and its `.sha256` file. The DMG holds `MacPocketKnife.app` and an
 Applications shortcut. `scripts/verify-dmg.sh` mounts it read-only, checks bundle
 metadata, executable permissions, both architectures and the whole-bundle
 signature, then unmounts even if a check fails. It never launches the app.
@@ -70,9 +70,9 @@ Build metadata for the updater is embedded before sealing:
 
 CI runs Swift tests with coverage on macOS 14. Pull requests need at least 80%
 coverage of changed core source lines through llvm-cov export and diff-cover.
-Generated code, tests and the thin `Sources/CoreAIMacAssistant/` UI executable
+Generated code, tests and the thin `Sources/MacPocketKnife/` UI executable
 are excluded, as rmount excludes its `App/` UI. Keep testable logic in
-`CoreAIMacAssistantCore`. The macOS 15 job also compiles the Swift package's app
+`MacPocketKnifeCore`. The macOS 15 job also compiles the Swift package's app
 scheme with the Xcode toolchain and signing disabled.
 
 ## Tag and publish
@@ -113,11 +113,11 @@ notarization steps run in any case.
 ## Verify and install a download
 
 Download a DMG and its matching `.sha256` from the same
-[GitHub Release](https://github.com/fperdigon/core-ai-mac-assistant/releases).
+[GitHub Release](https://github.com/fperdigon/macpocketknife/releases).
 In the download directory, for example:
 
 ```sh
-shasum -a 256 -c CoreAIMacAssistant-0.1.0.dmg.sha256
+shasum -a 256 -c MacPocketKnife-0.1.0.dmg.sha256
 ```
 
 The checksum file names the DMG it verifies. For nightlies use the matching
@@ -125,7 +125,7 @@ nightly checksum filename. This detects corruption; trust depends on obtaining
 the checksum from a trusted release. Developers can also run:
 
 ```sh
-scripts/verify-dmg.sh CoreAIMacAssistant-0.1.0.dmg
+scripts/verify-dmg.sh MacPocketKnife-0.1.0.dmg
 ```
 
 Open the DMG, drag the app to Applications, and eject the image. On first launch,

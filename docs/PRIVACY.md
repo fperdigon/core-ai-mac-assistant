@@ -1,12 +1,14 @@
 # Privacy and secrets
 
-Core AI Mac Assistant is designed to work offline with local notifications.
+MacPocketKnife is a personal pocket multi-tool for the Mac menu bar. Its first
+tool, a battery guard for forgotten `caffeinate` processes and other sleep
+blockers, is designed to work offline with local notifications.
 There is no telemetry, analytics, advertising, or remote crash reporting.
 
 ## Local storage
 
 The Telegram bot token belongs only in the macOS Keychain, as a generic-password
-item with service `core-ai-mac-assistant` and account `telegramBotToken`.
+item with service `macpocketknife` and account `telegramBotToken`.
 The core Keychain store uses `WhenUnlockedThisDeviceOnly` accessibility and
 explicitly disables iCloud synchronization. A custom service can be supplied
 by a caller. The token must never be saved in preferences, logs, or source files.
@@ -38,7 +40,7 @@ retains delivered messages according to its own policies.
 ## Software updates
 
 Update checks contact `api.github.com` for the public releases of
-`fperdigon/core-ai-mac-assistant`. Automatic checking is enabled by default and
+`fperdigon/macpocketknife`. Automatic checking is enabled by default and
 runs at launch at most once every 24 hours, including failed attempts. Turn it
 off in Settings > Updates to make checks manual only. Installing an offered
 update downloads its release asset from GitHub and GitHub's release asset CDN.

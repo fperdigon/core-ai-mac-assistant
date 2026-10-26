@@ -1,0 +1,51 @@
+// Copyright 2026 Francisco Perdigon Romero and contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import Foundation
+
+public protocol UpdateClock: Sendable {
+    var now: Date { get }
+}
+
+public struct UpdateSystemClock: UpdateClock {
+    public init() {}
+    public var now: Date { Date() }
+}
+
+public struct UpdatePreferences: Equatable, Sendable {
+    public var channel: UpdateChannel
+    public var automatically: Bool
+    public var skippedVersion: String?
+
+    public init(channel: UpdateChannel = .stable, automatically: Bool = true, skippedVersion: String? = nil) {
+        self.channel = channel
+        self.automatically = automatically
+        self.skippedVersion = skippedVersion
+    }
+}
+
+public struct UpdateCheckPolicy: Sendable {
+    private let clock: any UpdateClock
+    public init(clock: any UpdateClock = UpdateSystemClock()) { self.clock = clock }
+
+    public func isDue(preferences: UpdatePreferences, lastAttempt: Date?) -> Bool {
+        preferences.automatically && (lastAttempt.map { clock.now.timeIntervalSince($0) >= 86400 } ?? true)
+    }
+
+    public func shouldOffer(tag: String, preferences: UpdatePreferences, userInitiated: Bool) -> Bool {
+        userInitiated || preferences.skippedVersion != tag
+    }
+
+    public var now: Date { clock.now }
+}

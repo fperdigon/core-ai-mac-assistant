@@ -1,4 +1,4 @@
-# Copyright 2026 The Core AI Mac Assistant contributors
+# Copyright 2026 Francisco Perdigon Romero and contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,16 +31,16 @@ class VerifyDmgTests(unittest.TestCase):
         self.tools = self.tmp / "tools"
         self.tools.mkdir()
         self.stage = self.tmp / "stage"
-        self.app = self.stage / "Core AI Mac Assistant.app"
+        self.app = self.stage / "MacPocketKnife.app"
         (self.app / "Contents/MacOS").mkdir(parents=True)
         (self.app / "Contents/Resources").mkdir()
-        self.exe = self.app / "Contents/MacOS/CoreAIMacAssistant"
+        self.exe = self.app / "Contents/MacOS/MacPocketKnife"
         self.exe.write_text("fixture")
         self.exe.chmod(0o755)
         self.plist = self.app / "Contents/Info.plist"
         self.info = {
-            "CFBundleIdentifier": "io.github.fperdigon.core-ai-mac-assistant",
-            "CFBundleExecutable": "CoreAIMacAssistant",
+            "CFBundleIdentifier": "io.github.fperdigon.macpocketknife",
+            "CFBundleExecutable": "MacPocketKnife",
             "CFBundleShortVersionString": "0.1.0",
             "CFBundlePackageType": "APPL",
             "LSUIElement": True,

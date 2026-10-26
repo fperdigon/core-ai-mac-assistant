@@ -1,4 +1,4 @@
-# Copyright 2026 The Core AI Mac Assistant contributors
+# Copyright 2026 Francisco Perdigon Romero and contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ jobs:
           BIN="$(find .build -type f -path '*.xctest/Contents/MacOS/*' | head -1)"
           test -n "$BIN"
           xcrun llvm-cov report "$BIN" -instr-profile "$PROFDATA" \
-            -ignore-filename-regex '\.build|Tests|Sources/CoreAIMacAssistant/|[Gg]enerated' | tee coverage.txt
+            -ignore-filename-regex '\.build|Tests|Sources/MacPocketKnife/|[Gg]enerated' | tee coverage.txt
           {
             echo '### Test coverage'
             echo '```'
@@ -68,7 +68,7 @@ jobs:
           name: coverage-report
           path: coverage.txt
       # The thin SPM executable is UI composition code, like rmount's App/.
-      # Keep testable logic in CoreAIMacAssistantCore; exclude UI, generated code and tests.
+      # Keep testable logic in MacPocketKnifeCore; exclude UI, generated code and tests.
       - name: New-code coverage gate (>= 80%)
         if: github.event_name == 'pull_request'
         env:
@@ -78,13 +78,13 @@ jobs:
           BIN="$(find .build -type f -path '*.xctest/Contents/MacOS/*' | head -1)"
           test -n "$BIN"
           xcrun llvm-cov export -format=lcov "$BIN" -instr-profile "$PROFDATA" \
-            -ignore-filename-regex '\.build|Tests|Sources/CoreAIMacAssistant/|[Gg]enerated' \
+            -ignore-filename-regex '\.build|Tests|Sources/MacPocketKnife/|[Gg]enerated' \
             | sed "s#SF:$PWD/#SF:#" > coverage.lcov
           python3 -m venv .diffcover
           .diffcover/bin/pip install --quiet 'diff-cover>=9,<10'
           set +e
           .diffcover/bin/diff-cover coverage.lcov --compare-branch="origin/$BASE_REF" \
-            --include 'Sources/*' --exclude 'Sources/CoreAIMacAssistant/*' '*[Gg]enerated*' '*Tests*' \
+            --include 'Sources/*' --exclude 'Sources/MacPocketKnife/*' '*[Gg]enerated*' '*Tests*' \
             --fail-under=80 --markdown-report diff-coverage.md
           status=$?
           set -e
@@ -115,7 +115,7 @@ jobs:
       - name: Build app with Xcode (unsigned Swift package)
         run: |
           set -o pipefail
-          xcodebuild -scheme CoreAIMacAssistant -destination 'platform=macOS' \
+          xcodebuild -scheme MacPocketKnife -destination 'platform=macOS' \
             -configuration Debug -derivedDataPath build/Xcode \
             CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
             build 2>&1 | tee xcodebuild.log

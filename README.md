@@ -1,8 +1,8 @@
-# Core AI Mac Assistant
+# MacPocketKnife
 
-A native macOS menu bar app being built to protect the battery from forgotten
-`caffeinate` processes and other sleep blockers. It is designed for offline use
-with local alerts and an optional Telegram channel.
+A personal pocket multi-tool for the Mac menu bar. Its first tool is a battery
+guard for forgotten `caffeinate` processes and other sleep blockers, designed
+for offline use with local alerts and an optional Telegram channel.
 
 ## Status
 
@@ -44,9 +44,9 @@ is treated as app-originated.
 ## Install
 
 Requires macOS 13 or later (Apple silicon or Intel). Download the DMG and matching
-`.sha256` file from [GitHub Releases](https://github.com/fperdigon/core-ai-mac-assistant/releases).
-Verify the download with `shasum -a 256 -c CoreAIMacAssistant-0.1.0.dmg.sha256`
-using your downloaded checksum filename. Open the DMG, drag **Core AI Mac Assistant**
+`.sha256` file from [GitHub Releases](https://github.com/fperdigon/macpocketknife/releases).
+Verify the download with `shasum -a 256 -c MacPocketKnife-0.1.0.dmg.sha256`
+using your downloaded checksum filename. Open the DMG, drag **MacPocketKnife**
 to Applications, then eject it. On first launch, right-click the app and choose
 **Open**; if blocked, use **System Settings > Privacy & Security > Open Anyway**.
 Builds are ad-hoc signed and not notarized. Nightly pre-releases are unstable;
@@ -60,7 +60,7 @@ dependencies. From the repository root:
 ```sh
 swift build
 swift test
-swift run CoreAIMacAssistant
+swift run MacPocketKnife
 ```
 
 The app runs in the menu bar without a Dock icon. Use its menu to quit.
@@ -79,4 +79,9 @@ the private process in [SECURITY.md](SECURITY.md).
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Apache-2.0. Copyright 2026 Francisco Perdigon Romero and contributors.
+See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+## About the author
+
+Created by Francisco Perdigon Romero (https://github.com/fperdigon), founder of Core AI (https://core-ai.net), a company specializing in privacy-focused enterprise AI solutions.

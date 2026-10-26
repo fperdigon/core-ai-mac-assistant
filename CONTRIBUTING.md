@@ -21,15 +21,15 @@ If the environment blocks SwiftPM's build sandbox, use `--disable-sandbox` with
 `swift build` and `swift test`. The existing Keychain integration test is skipped
 when `CI` is set; use `CI=1 swift test` to avoid accessing the real Keychain.
 
-Run `swift run CoreAIMacAssistant --print-status` to print the current status line once and exit.
-Run `swift run CoreAIMacAssistant --show-settings` to open Settings immediately after launch.
-Run `swift run CoreAIMacAssistant --snapshot-settings <directory>` to save PNG snapshots of every Settings tab and exit.
+Run `swift run MacPocketKnife --print-status` to print the current status line once and exit.
+Run `swift run MacPocketKnife --show-settings` to open Settings immediately after launch.
+Run `swift run MacPocketKnife --snapshot-settings <directory>` to save PNG snapshots of every Settings tab and exit.
 
 ## macOS integration tests
 
-`CoreAIMacAssistantIntegrationTests` runs real caffeinate processes, pseudo-terminal
+`MacPocketKnifeIntegrationTests` runs real caffeinate processes, pseudo-terminal
 shells, and IOKit sleep assertions with fake battery state and policy time. Run it
-with `swift test --filter CoreAIMacAssistantIntegrationTests` (or as part of
+with `swift test --filter MacPocketKnifeIntegrationTests` (or as part of
 `swift test`). It needs no display or network. The suite skips when `forkpty` or
 pseudo-terminals are unavailable; the direct-spawn scenario additionally requires
 a runner without a controlling terminal, as on macOS CI. Each test scopes assertion
