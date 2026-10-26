@@ -40,7 +40,8 @@ final class SettingsWindowController: NSWindowController {
 
     required init?(coder: NSCoder) { nil }
 
-    func show() {
+    func show(tab: SettingsView.Tab? = nil) {
+        if let tab { selection.selectedTab = tab }
         showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)

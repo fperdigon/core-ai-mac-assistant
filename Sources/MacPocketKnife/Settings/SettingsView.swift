@@ -379,27 +379,38 @@ private struct AboutPane: View {
     private let build = BuildInfo.current
 
     var body: some View {
-        Form {
-            Section(AppInfo.name) {
-                Text("A personal pocket multi-tool for the Mac menu bar. Its first tool is a battery guard for forgotten caffeinate processes and other sleep blockers.")
-                    .font(.callout)
-                LabeledContent(
-                    "Version",
-                    value: BuildInfo.aboutVersion(version: build.version, sha: build.sha, channel: build.channel)
-                )
-                LabeledContent("Build SHA", value: build.sha)
-                LabeledContent("Channel", value: build.channel)
-                LabeledContent("License", value: "Apache-2.0")
-                Link(
-                    "fperdigon/macpocketknife",
-                    destination: URL(string: "https://github.com/fperdigon/macpocketknife")!
-                )
-                Link("Developed by Francisco Perdigon Romero | Founder of Core AI", destination: URL(string: "https://core-ai.net")!)
-                Link("Francisco Perdigon Romero on GitHub", destination: URL(string: "https://github.com/fperdigon")!)
+        VStack(spacing: 12) {
+            VStack(spacing: 12) {
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 72, height: 72)
+                Text(AppInfo.name)
+                    .font(.title2.weight(.semibold))
             }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 12)
+            Form {
+                Section {
+                    Text("A personal pocket multi-tool for the Mac menu bar. Its first tool is a battery guard for forgotten caffeinate processes and other sleep blockers.")
+                        .font(.callout)
+                    LabeledContent(
+                        "Version",
+                        value: BuildInfo.aboutVersion(version: build.version, sha: build.sha, channel: build.channel)
+                    )
+                    LabeledContent("Build SHA", value: build.sha)
+                    LabeledContent("Channel", value: build.channel)
+                    LabeledContent("License", value: "Apache-2.0")
+                    Link(
+                        "fperdigon/macpocketknife",
+                        destination: URL(string: "https://github.com/fperdigon/macpocketknife")!
+                    )
+                    Link("Developed by Francisco Perdigon Romero | Founder of Core AI", destination: URL(string: "https://core-ai.net")!)
+                    Link("Francisco Perdigon Romero on GitHub", destination: URL(string: "https://github.com/fperdigon")!)
+                }
+            }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .scrollDisabled(true)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .scrollDisabled(true)
     }
 }
