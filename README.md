@@ -6,35 +6,24 @@ for offline use with local alerts and an optional Telegram channel.
 
 ## Status
 
-The menu bar app currently displays the project title and a Quit command.
-The Settings UI and wiring are in progress. Automatic protection, local
-notifications, and Telegram controls are **planned** in the app.
-
-Implemented core components include:
-
-- IOKit power monitoring and sleep assertion discovery, with parsers.
-- Process ancestry classification and a pure policy engine with ownership and
-  termination retry limits; the engine returns actions for a caller to execute.
-- Keep-awake assertion control, optional expiry, and local state restoration.
-- Battery alert scheduling and configurable thresholds.
-- Telegram client, token validation, fresh `/start` chat discovery, test message,
-  alert formatting, and silent delivery support.
-- Keychain secret storage and sensitive-text redaction.
-
-These components have tests but are not yet connected to the menu bar app.
-Running the app today does not monitor or terminate processes or send alerts.
+The app runs in the menu bar and monitors battery power and sleep blockers. It
+shows battery time remaining and watts, and provides a Keep awake toggle. A
+`caffeinate` process started from a console is terminated immediately; other
+apps' sleep blockers are reported and handled at the configured kill threshold.
+Battery alerts escalate by severity and can be delivered through macOS local
+notifications or optional Telegram. Settings are available in tabs, and updates
+can be checked and installed in the app.
 
 ## Protection rules
 
-The rules from [the project plan](docs/PLAN.md) describe the intended app behavior.
-The core policy exists; executing its actions in the app is planned.
+The app applies these protection rules:
 
 | Origin | Behavior |
 |---|---|
 | Started from a console (shell, Terminal, iTerm, tmux or ssh in the parent chain) | Terminated immediately; the user is told. The app takes over. |
 | Started by another app, or not classifiable | Only reported. Terminated when the battery reaches the kill threshold (default 15%) on battery power. |
 | The app's own assertion | Indefinite by default. Released at the kill threshold like the others. |
-| Other sleep blockers (media players, other keep-awake tools) | Reported only, never terminated. |
+| Other sleep blockers (media players, other keep-awake tools) | Reported; the app releases its own keep-awake assertion at the kill threshold. |
 
 Only processes owned by the current user are eligible for termination. A retry
 limit prevents repeated termination if something keeps relaunching `caffeinate`.
@@ -43,14 +32,47 @@ is treated as app-originated.
 
 ## Install
 
-Requires macOS 13 or later (Apple silicon or Intel). Download the DMG and matching
-`.sha256` file from [GitHub Releases](https://github.com/fperdigon/macpocketknife/releases).
-Verify the download with `shasum -a 256 -c MacPocketKnife-0.1.0.dmg.sha256`
-using your downloaded checksum filename. Open the DMG, drag **MacPocketKnife**
-to Applications, then eject it. On first launch, right-click the app and choose
-**Open**; if blocked, use **System Settings > Privacy & Security > Open Anyway**.
-Builds are ad-hoc signed and not notarized. Nightly pre-releases are unstable;
-choose a tagged release for regular use.
+1. Download `MacPocketKnife-<version>.dmg` and its matching `.sha256` file from
+   [GitHub Releases](https://github.com/fperdigon/macpocketknife/releases).
+   The latest stable release is at the top; nightlies are pre-releases.
+2. In the download folder, verify the DMG with:
+
+   ```bash
+   shasum -a 256 -c MacPocketKnife-<version>.dmg.sha256
+   ```
+
+3. Open the DMG, drag **MacPocketKnife** to Applications, then eject the DMG.
+4. The app is ad-hoc signed and **not notarized**, so macOS blocks it on first
+   launch. Try to open it once, then go to **System Settings > Privacy & Security**,
+   scroll to the message about MacPocketKnife, click **Open Anyway**, and confirm.
+   On macOS 15 and later, the old right-click > Open shortcut no longer bypasses
+   this block. Alternatively, if you are comfortable with Terminal, run:
+
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/MacPocketKnife.app
+   ```
+
+   This removes the download-quarantine flag from this app only.
+5. A menu bar icon appears. Allow notifications when macOS asks. Open the menu
+   to see status, toggle Keep awake, open Settings, or Check for Updates.
+
+### Updating
+
+Use **Check for Updates…** in the menu or check in **Settings > Updates**. Stable
+releases are selected by default; nightly updates are optional in Settings >
+Updates. Installing an update quits and reopens the app.
+
+### Uninstall
+
+Quit the app and delete it from Applications. To remove preferences, run
+`defaults delete io.github.fperdigon.macpocketknife`. If you saved a Telegram
+token, delete the Keychain item for service `macpocketknife`.
+
+### Requirements
+
+macOS 13 or later; Apple silicon or Intel.
+
+Homebrew installation is planned but is not available yet.
 
 ## Build, test, and run from source
 
@@ -65,7 +87,7 @@ swift run MacPocketKnife
 
 The app runs in the menu bar without a Dock icon. Use its menu to quit.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for repository checks and testing guidance,
-and the [user guide](docs/USER_GUIDE.md) for planned controls and setup.
+and the [user guide](docs/USER_GUIDE.md) for controls and setup.
 
 ## Privacy
 
