@@ -27,7 +27,7 @@ func noticeComposerFormatsEveryBatteryLevel(level: AlertLevel, title: String) {
         blockers: ["caffeinate", "MediaPlayer"]
     ) == Notice(
         kind: .batteryAlert, title: title,
-        body: "Battery at 25%. Keeping the Mac awake: caffeinate, MediaPlayer.", level: level
+        body: "Battery at 25%. Keeping the Mac awake: caffeinate.", level: level
     ))
 }
 
@@ -35,7 +35,7 @@ func noticeComposerFormatsEveryBatteryLevel(level: AlertLevel, title: String) {
     let composer = NoticeComposer()
     let alert = BatteryAlert(level: .normal, batteryPercent: 80)
     #expect(composer.compose(alert: alert).body
-        == "Battery at 80%. Keeping the Mac awake: an active sleep assertion.")
+        == "Battery at 80%. Keeping the Mac awake: caffeinate or the app's own keep-awake.")
     #expect(composer.compose(alert: alert, blockers: [""]) == composer.compose(alert: alert))
     #expect(composer.compose(alert: alert, blockers: ["", "caffeinate"]).body
         == "Battery at 80%. Keeping the Mac awake: caffeinate.")
@@ -55,10 +55,6 @@ private func noticeAssertion(name: String) -> ClassifiedAssertion {
         (.notifyDetected(noticeAssertion(name: "caffeinate")), Notice(
             kind: .keepAwakeDetected, title: "Keep-awake process detected",
             body: "caffeinate (PID 42) is keeping the Mac awake."
-        )),
-        (.notifyReportOnly(noticeAssertion(name: "MediaPlayer")), Notice(
-            kind: .keepAwakeDetected, title: "Sleep blocker reported",
-            body: "MediaPlayer (PID 42) is keeping the Mac awake. Report only."
         )),
         (.terminate(pid: 42, processName: "caffeinate", reason: .consoleStarted), Notice(
             kind: .processTerminated, title: "Keep-awake process terminated",

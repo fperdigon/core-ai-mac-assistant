@@ -1,14 +1,14 @@
 # MacPocketKnife user guide
 
 MacPocketKnife is a personal pocket multi-tool for the Mac menu bar. Its first
-tool is a battery guard for forgotten `caffeinate` processes and other sleep blockers.
+tool is a battery guard for forgotten `caffeinate` processes and the app’s own keep-awake.
 
 ## Availability and installation
 
 The app monitors battery power and sleep blockers from the menu bar. It provides
 battery status, Keep awake, Settings, local notifications, optional Telegram
 alerts, and in-app updates. Console-started `caffeinate` processes are terminated
-immediately; other apps' blockers are reported and handled at the configured
+immediately; app-started `caffeinate` is reported and handled at the configured
 kill threshold.
 
 ## Install
@@ -43,7 +43,7 @@ The app applies these rules:
   ancestry evidence; incomplete or unknown ancestry is treated as app-originated.
 - `caffeinate` started by another app, or not classifiable: report it, then
   terminate it only at the battery kill threshold while on battery power.
-- Other sleep blockers, such as media players: report them, never terminate them.
+- Other sleep blockers, such as media players: ignored by default. Enable “Also list other apps that keep the Mac awake (information only)” in Protection settings to list them in the menu. They never trigger notices, battery alerts, or termination.
 
 Only current-user processes are eligible for termination. The default retry
 limit is three termination actions per process name in a rolling 60-second
@@ -51,7 +51,7 @@ window, preventing a loop if a process repeatedly relaunches.
 
 ## Battery alerts and kill threshold
 
-While on battery with a sleep blocker active, the core schedules an initial
+While on battery with `caffeinate` or the app’s own keep-awake active, the core schedules an initial
 alert, immediate escalation when severity increases, and repeated alerts:
 
 | Battery level | Default repeat interval | Severity |
@@ -65,7 +65,7 @@ also stops scheduling when the battery percentage is unknown.
 
 At or below the default **15% kill threshold**, while on battery, eligible
 `caffeinate` processes are terminated and the app releases its own assertion.
-Other sleep blockers remain report-only. Settings controls the threshold and
+Other sleep blockers are ignored except for the optional informational menu listing. Settings controls the threshold and
 alert levels and intervals. Alerts are delivered through local notifications;
 macOS notification authorization must be allowed for them to appear.
 

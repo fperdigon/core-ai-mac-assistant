@@ -215,3 +215,18 @@ func appSettingsValidationHandlesNonfiniteDuration(duration: Double) {
     #expect(try await model.discoverTelegramChatID() == "-42")
     #expect(store.load().telegram.chatID == "-42")
 }
+
+@Test func otherSleepBlockersSettingMigratesAndRoundTrips() throws {
+    let original = AppSettings()
+    #expect(!original.showOtherSleepBlockers)
+    var json = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(original)) as? [String: Any])
+    json.removeValue(forKey: "showOtherSleepBlockers")
+    let legacy = try JSONSerialization.data(withJSONObject: json)
+    #expect(try JSONDecoder().decode(AppSettings.self, from: legacy) == original)
+    json["showOtherSleepBlockers"] = NSNull()
+    let null = try JSONSerialization.data(withJSONObject: json)
+    #expect(try JSONDecoder().decode(AppSettings.self, from: null) == original)
+    let enabled = AppSettings(showOtherSleepBlockers: true)
+    let encoded = try JSONEncoder().encode(enabled)
+    #expect(try JSONDecoder().decode(AppSettings.self, from: encoded) == enabled)
+}

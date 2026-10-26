@@ -27,8 +27,8 @@ private func summaryAssertion(_ name: String, pid: Int32 = 42) -> SleepAssertion
         summaryAssertion("loginwindow"), summaryAssertion("sharingd"),
         summaryAssertion(""),
     ]
-    #expect(SleepBlockerSummary.names(assertions: assertions, ownPID: 99).isEmpty)
-    #expect(SleepBlockerSummary.names(assertions: [], ownPID: 99).isEmpty)
+    #expect(SleepBlockerSummary.names(assertions: assertions, ownPID: 99, showOtherSleepBlockers: true).isEmpty)
+    #expect(SleepBlockerSummary.names(assertions: [], ownPID: 99, showOtherSleepBlockers: true).isEmpty)
 }
 
 @Test func sleepBlockerSummaryMapsDeduplicatesAndSortsUserActions() {
@@ -37,7 +37,7 @@ private func summaryAssertion(_ name: String, pid: Int32 = 42) -> SleepAssertion
         summaryAssertion("Claude", pid: 43), summaryAssertion("audio playback"),
         summaryAssertion("UnknownApp"),
     ]
-    let names = SleepBlockerSummary.names(assertions: assertions, ownPID: 99)
+    let names = SleepBlockerSummary.names(assertions: assertions, ownPID: 99, showOtherSleepBlockers: true)
     #expect(names == ["Claude", "UnknownApp", "audio playback"])
     #expect(StatusLineFormatter.blockersLine(blockers: names)
         == "Also keeping awake: Claude, UnknownApp, audio playback")
@@ -46,26 +46,25 @@ private func summaryAssertion(_ name: String, pid: Int32 = 42) -> SleepAssertion
 
 @Test func sleepBlockerSummaryLimitsDistinctNamesAfterFilteringAndSorting() {
     let assertions = ["Z", "D", "C", "B", "A", "A", "powerd"].map { summaryAssertion($0) }
-    let names = SleepBlockerSummary.names(assertions: assertions, ownPID: 99)
+    let names = SleepBlockerSummary.names(assertions: assertions, ownPID: 99, showOtherSleepBlockers: true)
     #expect(names == ["A", "B", "C", "+2 more"])
     let four = ["D", "C", "B", "A"].map { summaryAssertion($0) }
-    #expect(SleepBlockerSummary.names(assertions: four, ownPID: 99) == ["A", "B", "C", "+1 more"])
+    #expect(SleepBlockerSummary.names(assertions: four, ownPID: 99, showOtherSleepBlockers: true) == ["A", "B", "C", "+1 more"])
 }
 
-@Test func batteryAlertFormattersUseTheSameCleanedSummary() {
-    let assertions = [
-        summaryAssertion("Claude"), summaryAssertion("coreaudiod"),
-        summaryAssertion("powerd"), summaryAssertion("MacPocketKnife", pid: 99),
-    ]
-    let names = SleepBlockerSummary.names(assertions: assertions, ownPID: 99)
+@Test func batteryAlertFormattersIgnoreInformationalNames() {
+    let names = ["Claude", "audio playback", "caffeinate", SleepBlockerSummary.ownKeepAwakeName]
     let alert = BatteryAlert(level: .normal, batteryPercent: 25)
     let notice = NoticeComposer().compose(alert: alert, blockers: names)
     let telegram = TelegramAlertFormatter().format(alert: alert, blockers: names)
-    #expect(notice.body == "Battery at 25%. Keeping the Mac awake: Claude, audio playback.")
-    #expect(telegram == "Normal: battery at 25%. Keeping the Mac awake: Claude, audio playback.")
-    let rawNames = ["powerd", "coreaudiod"]
-    #expect(NoticeComposer().compose(alert: alert, blockers: rawNames).body
-        == "Battery at 25%. Keeping the Mac awake: audio playback.")
-    #expect(TelegramAlertFormatter().format(alert: alert, blockers: rawNames)
-        == "Normal: battery at 25%. Keeping the Mac awake: audio playback.")
+    #expect(notice.body == "Battery at 25%. Keeping the Mac awake: caffeinate, the app's own keep-awake.")
+    #expect(telegram == "Normal: battery at 25%. Keeping the Mac awake: caffeinate, the app's own keep-awake.")
+}
+
+@Test func sleepBlockerSummaryDefaultsToCaffeinateOnly() {
+    let assertions = [summaryAssertion("Claude"), summaryAssertion("coreaudiod"), summaryAssertion("caffeinate")]
+    let names = SleepBlockerSummary.names(assertions: assertions, ownPID: 99)
+    #expect(StatusLineFormatter.blockersLine(blockers: names) == "Also keeping awake: caffeinate")
+    let others = Array(assertions.prefix(2))
+    #expect(SleepBlockerSummary.names(assertions: others, ownPID: 99).isEmpty)
 }

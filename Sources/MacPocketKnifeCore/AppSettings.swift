@@ -38,6 +38,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var keepAwakeDefaultDuration: TimeInterval?
     public var telegram: TelegramPreferences
     public var launchAtLogin: Bool
+    public var showOtherSleepBlockers: Bool
     public var updateChannel: UpdateChannel
     public var checkForUpdatesAutomatically: Bool
     public var skippedVersion: String?
@@ -47,13 +48,14 @@ public struct AppSettings: Codable, Equatable, Sendable {
         keepAwakeDefaultDuration: TimeInterval? = nil,
         telegram: TelegramPreferences = TelegramPreferences(), launchAtLogin: Bool = false,
         updateChannel: UpdateChannel = .stable, checkForUpdatesAutomatically: Bool = true,
-        skippedVersion: String? = nil
+        skippedVersion: String? = nil, showOtherSleepBlockers: Bool = false
     ) {
         self.alerts = alerts
         self.policy = policy
         self.keepAwakeDefaultDuration = keepAwakeDefaultDuration
         self.telegram = telegram
         self.launchAtLogin = launchAtLogin
+        self.showOtherSleepBlockers = showOtherSleepBlockers
         self.updateChannel = updateChannel
         self.checkForUpdatesAutomatically = checkForUpdatesAutomatically
         self.skippedVersion = skippedVersion
@@ -61,7 +63,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case alerts, policy, keepAwakeDefaultDuration, telegram, launchAtLogin
-        case updateChannel, checkForUpdatesAutomatically, skippedVersion
+        case updateChannel, checkForUpdatesAutomatically, skippedVersion, showOtherSleepBlockers
     }
 
     public init(from decoder: Decoder) throws {
@@ -72,6 +74,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         keepAwakeDefaultDuration = try container.decodeIfPresent(TimeInterval.self, forKey: .keepAwakeDefaultDuration)
         telegram = try container.decode(TelegramPreferences.self, forKey: .telegram)
         launchAtLogin = try container.decode(Bool.self, forKey: .launchAtLogin)
+        showOtherSleepBlockers = try container.decodeIfPresent(Bool.self, forKey: .showOtherSleepBlockers) ?? false
         updateChannel = try container.decodeIfPresent(UpdateChannel.self, forKey: .updateChannel) ?? .stable
         checkForUpdatesAutomatically = try container.decodeIfPresent(Bool.self, forKey: .checkForUpdatesAutomatically) ?? true
         skippedVersion = try container.decodeIfPresent(String.self, forKey: .skippedVersion)

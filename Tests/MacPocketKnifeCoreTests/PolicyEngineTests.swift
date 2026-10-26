@@ -54,7 +54,7 @@ func policyRuleTable(source: PowerSource, percent: Int?) {
                     if own {
                         if lowBattery { expected = [.releaseOwnAssertion] }
                     } else if name != "caffeinate" {
-                        expected = [.notifyReportOnly(assertion)]
+                        expected = []
                     } else {
                         expected = [.notifyDetected(assertion)]
                         if origin == .console || lowBattery {
@@ -73,14 +73,13 @@ func policyRuleTable(source: PowerSource, percent: Int?) {
     }
 }
 
-@Test(arguments: ["caffeinate", "MediaPlayer"])
-func policyNotificationsAreOncePerPIDUntilDisappearance(name: String) {
+@Test func policyNotificationsAreOncePerPIDUntilDisappearance() {
+    let name = "caffeinate"
     var engine = PolicyEngine()
     let first = policyAssertion(name: name)
     let second = policyAssertion(pid: 43, name: name)
     let changed = policyAssertion(name: name, type: "PreventUserIdleSystemSleep")
-    let notification: (ClassifiedAssertion) -> PolicyAction = name == "caffeinate"
-        ? { .notifyDetected($0) } : { .notifyReportOnly($0) }
+    let notification: (ClassifiedAssertion) -> PolicyAction = { .notifyDetected($0) }
     let steps: [([ClassifiedAssertion], [PolicyAction])] = [
         ([first, changed], [notification(first)]),
         ([changed], []),
@@ -104,7 +103,7 @@ func policyNotificationsAreOncePerPIDUntilDisappearance(name: String) {
     let own = policyAssertion(pid: 43, name: "ExampleApp", own: true)
     let other = policyAssertion(pid: 44, name: "MediaPlayer")
     let steps: [(PowerState, [PolicyAction])] = [
-        (policyPower(.ac), [.notifyDetected(app), .notifyReportOnly(other)]),
+        (policyPower(.ac), [.notifyDetected(app)]),
         (policyPower(.battery, 16), []),
         (policyPower(), [policyTermination(app, reason: .batteryThreshold), .releaseOwnAssertion]),
         (policyPower(.ac), []),

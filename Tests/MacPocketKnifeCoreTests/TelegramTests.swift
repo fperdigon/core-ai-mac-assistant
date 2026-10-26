@@ -229,13 +229,13 @@ func telegramFormatsEveryAlertLevelWithoutMachineName(level: AlertLevel) {
     case .urgent: wording = "Urgent"
     case .critical: wording = "Critical"
     }
-    #expect(text == "\(wording): battery at 25%. Keeping the Mac awake: caffeinate, MediaPlayer.")
+    #expect(text == "\(wording): battery at 25%. Keeping the Mac awake: caffeinate.")
 }
 
 @Test func telegramMachineNameIsExplicitOptInAndMissingBlockersHaveFallback() {
     let formatter = TelegramAlertFormatter()
     let alert = BatteryAlert(level: .normal, batteryPercent: 80)
-    #expect(formatter.format(alert: alert) == "Normal: battery at 80%. Keeping the Mac awake: an active sleep assertion.")
+    #expect(formatter.format(alert: alert) == "Normal: battery at 80%. Keeping the Mac awake: caffeinate or the app's own keep-awake.")
     #expect(formatter.format(alert: alert, blockers: []) == formatter.format(alert: alert))
     #expect(formatter.format(alert: alert, includeMachineName: "Example Mac").contains("(Example Mac)"))
 }

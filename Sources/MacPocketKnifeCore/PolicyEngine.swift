@@ -53,11 +53,10 @@ public struct PolicyEngine: PolicyEvaluating {
             }
 
             let assertion = classified.assertion
-            if seenPIDs.insert(assertion.pid).inserted {
-                actions.append(assertion.isCaffeinate
-                    ? .notifyDetected(classified) : .notifyReportOnly(classified))
-            }
             guard assertion.isCaffeinate else { continue }
+            if seenPIDs.insert(assertion.pid).inserted {
+                actions.append(.notifyDetected(classified))
+            }
 
             let reason: TerminationReason
             if classified.origin == .console {

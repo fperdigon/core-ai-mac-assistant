@@ -19,14 +19,23 @@ public enum SleepBlockerSummary {
         "powerd", "WindowServer", "loginwindow", "sharingd",
     ]
 
-    public static func names(assertions: [SleepAssertion], ownPID: Int32) -> [String] {
+    public static func names(
+        assertions: [SleepAssertion], ownPID: Int32, showOtherSleepBlockers: Bool = false
+    ) -> [String] {
         let names = assertions.compactMap { assertion -> String? in
             guard assertion.pid != ownPID else { return nil }
+            guard assertion.isCaffeinate || showOtherSleepBlockers else { return nil }
             return displayName(for: assertion.processName)
         }
         let sorted = Array(Set(names)).sorted()
         guard sorted.count > 3 else { return sorted }
         return Array(sorted.prefix(3)) + ["+\(sorted.count - 3) more"]
+    }
+
+    public static let ownKeepAwakeName = "the app's own keep-awake"
+
+    static func alertNames(_ names: [String]) -> [String] {
+        names.filter { $0 == "caffeinate" || $0 == ownKeepAwakeName }
     }
 
     static func displayName(for processName: String) -> String? {

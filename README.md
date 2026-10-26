@@ -1,15 +1,14 @@
 # MacPocketKnife
 
 A personal pocket multi-tool for the Mac menu bar. Its first tool is a battery
-guard for forgotten `caffeinate` processes and other sleep blockers, designed
+guard for forgotten `caffeinate` processes and the app’s own keep-awake, designed
 for offline use with local alerts and an optional Telegram channel.
 
 ## Status
 
 The app runs in the menu bar and monitors battery power and sleep blockers. It
 shows battery time remaining and watts, and provides a Keep awake toggle. A
-`caffeinate` process started from a console is terminated immediately; other
-apps' sleep blockers are reported and handled at the configured kill threshold.
+`caffeinate` process started from a console is terminated immediately; app-started `caffeinate` is reported and handled at the configured kill threshold.
 Battery alerts escalate by severity and can be delivered through macOS local
 notifications or optional Telegram. Settings are available in tabs, and updates
 can be checked and installed in the app.
@@ -23,7 +22,7 @@ The app applies these protection rules:
 | Started from a console (shell, Terminal, iTerm, tmux or ssh in the parent chain) | Terminated immediately; the user is told. The app takes over. |
 | Started by another app, or not classifiable | Only reported. Terminated when the battery reaches the kill threshold (default 15%) on battery power. |
 | The app's own assertion | Indefinite by default. Released at the kill threshold like the others. |
-| Other sleep blockers (media players, other keep-awake tools) | Reported; the app releases its own keep-awake assertion at the kill threshold. |
+| Other sleep blockers (media players, other keep-awake tools) | Ignored by default (can be listed in the menu, information only) |
 
 Only processes owned by the current user are eligible for termination. A retry
 limit prevents repeated termination if something keeps relaunching `caffeinate`.
