@@ -25,6 +25,8 @@ limitations under the License.
     <string>io.github.fperdigon.macpocketknife</string>
     <key>CFBundleExecutable</key>
     <string>MacPocketKnife</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
