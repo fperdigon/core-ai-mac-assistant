@@ -17,6 +17,19 @@ import Foundation
 @MainActor
 public final class CaffeinateController {
     public static let assertionName = "MacPocketKnife keep-awake"
+    public static let keepAwakeStateKey = "keepAwakeState"
+
+    public static let keepUnlockedAssertionName = "MacPocketKnife keep-unlocked"
+    public static let keepUnlockedStateKey = "keepUnlockedState"
+
+    public static func makeKeepAwake() -> CaffeinateController { CaffeinateController() }
+
+    public static func makeKeepUnlocked() -> CaffeinateController {
+        CaffeinateController(name: keepUnlockedAssertionName, kind: .displaySleep, stateStoreKey: keepUnlockedStateKey)
+    }
+
+    public let name: String
+    public let kind: SleepAssertionKind
 
     public var isActive: Bool { assertion != nil }
     public private(set) var expiryDate: Date?
@@ -33,11 +46,19 @@ public final class CaffeinateController {
     public init(
         holder: any SleepAssertionHolding = IOKitSleepAssertionHolder(),
         scheduler: any KeepAwakeScheduling = KeepAwakeScheduler(),
-        store: any KeepAwakeStateStore = UserDefaultsKeepAwakeStateStore(defaults: .standard)
+        store: (any KeepAwakeStateStore)? = nil,
+        name: String? = nil,
+        kind: SleepAssertionKind = .systemSleep,
+        stateStoreKey: String? = nil
     ) {
         self.holder = holder
         self.scheduler = scheduler
-        self.store = store
+        self.store = store ?? UserDefaultsKeepAwakeStateStore(
+            defaults: .standard,
+            key: stateStoreKey ?? CaffeinateController.keepAwakeStateKey
+        )
+        self.name = name ?? Self.assertionName
+        self.kind = kind
     }
 
     deinit {
@@ -85,7 +106,7 @@ public final class CaffeinateController {
     }
 
     private func start(expiringAt date: Date?) {
-        guard let handle = holder.create(name: Self.assertionName) else {
+        guard let handle = holder.create(name: name, kind: kind) else {
             store.save(nil)
             return
         }

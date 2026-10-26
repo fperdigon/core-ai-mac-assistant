@@ -18,7 +18,8 @@ import MacPocketKnifeCore
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem?
-    private let controller = CaffeinateController()
+    private let controller = CaffeinateController.makeKeepAwake()
+    private let unlockController = CaffeinateController.makeKeepUnlocked()
     private let localNotifier = LocalNotifier()
     private let settings = SettingsModel(
         store: UserDefaultsSettingsStore(defaults: .standard), secrets: KeychainSecretStore()
@@ -36,6 +37,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let defaults = UserDefaults.standard
             let store = UserDefaultsKeepAwakeStateStore(defaults: defaults)
             store.save(controller.isActive ? KeepAwakeState(isActive: true, expiryDate: controller.expiryDate) : nil)
+            let unlockStore = UserDefaultsKeepAwakeStateStore(
+                defaults: defaults, key: CaffeinateController.keepUnlockedStateKey
+            )
+            let unlockState = KeepAwakeState(isActive: true, expiryDate: unlockController.expiryDate)
+            unlockStore.save(unlockController.isActive ? unlockState : nil)
             defaults.synchronize()
         }
     )
@@ -44,13 +50,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let statusLine = NSMenuItem(title: "Reading power state…", action: nil, keyEquivalent: "")
     private let blockersLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let keepAwake = NSMenuItem(title: "Keep awake", action: nil, keyEquivalent: "")
+    private let keepUnlocked = NSMenuItem(title: "Keep unlocked", action: nil, keyEquivalent: "")
     private let authorization = NSMenuItem(title: "Notifications: checking…", action: nil, keyEquivalent: "")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let engine = AssistantEngine(
             powerMonitor: IOKitPowerMonitor(), assertionProvider: IOKitAssertionProvider(),
             classifier: ProcessClassifier(processTable: SysctlProcessTable()),
-            caffeinateController: controller,
+            caffeinateController: controller, keepUnlockedController: unlockController,
             channels: [localNotifier, TelegramNotifier(settings: settings, secrets: KeychainSecretStore())],
             terminator: SignalProcessTerminator(), settings: settings
         )
@@ -76,6 +83,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         keepAwake.target = self
         keepAwake.action = #selector(toggleKeepAwake)
         menu.addItem(keepAwake)
+        keepUnlocked.target = self
+        keepUnlocked.action = #selector(toggleKeepUnlocked)
+        keepUnlocked.toolTip = "Keeps the display awake so the Mac does not lock from inactivity. Manual lock (Ctrl-Cmd-Q), closing the lid and password policies still apply."
+        menu.addItem(keepUnlocked)
         authorization.isEnabled = false
         menu.addItem(authorization)
         menu.addItem(.separator())
@@ -95,6 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         self.engine = engine
         engine.onChange = { [weak self] in self?.refreshStatus() }
         controller.restoreIfNeeded()
+        unlockController.restoreIfNeeded()
         updates.checkInBackgroundIfDue()
         if CommandLine.arguments.contains("--show-settings") { showSettings() }
         if let argumentIndex = CommandLine.arguments.firstIndex(of: "--snapshot-settings"),
@@ -104,9 +116,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             showSettings()
             settingsWindow?.captureSnapshots(in: directory) { NSApp.terminate(nil) }
         }
-        controller.onChange = { [weak self] _ in
-            self?.refreshStatus()
-            Task { @MainActor [weak self] in await self?.engine?.evaluate() }
+        for controller in [controller, unlockController] {
+            controller.onChange = { [weak self] _ in
+                self?.refreshStatus()
+                Task { @MainActor [weak self] in await self?.engine?.evaluate() }
+            }
         }
         Task { @MainActor in
             await engine.start()
@@ -130,6 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         blockersLine.title = blockers ?? ""
         blockersLine.isHidden = blockers == nil
         keepAwake.state = controller.isActive ? .on : .off
+        keepUnlocked.state = unlockController.isActive ? .on : .off
     }
 
     private func updateAuthorization(_ state: AuthorizationState) {
@@ -152,6 +167,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             controller.deactivate()
         } else {
             controller.activate(duration: settings.settings.keepAwakeDefaultDuration)
+        }
+    }
+
+    @objc private func toggleKeepUnlocked() {
+        if unlockController.isActive {
+            unlockController.deactivate()
+        } else {
+            unlockController.activate(duration: settings.settings.keepAwakeDefaultDuration)
         }
     }
 

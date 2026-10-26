@@ -34,6 +34,22 @@ Turn on Keep Awake in the menu bar to prevent idle system sleep. Turn it off to
 release the app's assertion. Indefinite operation is the default. Settings lets
 you choose a default duration, and the app restores saved Keep awake state on launch.
 
+## Keep unlocked
+
+Turn on **Keep unlocked**, directly below Keep awake in the menu, to keep the
+display awake and prevent the idle screen saver, display sleep and inactivity
+lock. Its checkmark shows when it is active. Turn it off to release its own
+assertion. It also prevents idle system sleep and works independently of Keep awake.
+
+The Mac stays unlocked and un-dimmed while this is on, so only use it where you
+trust the surroundings. Manual lock (Ctrl-Cmd-Q), closing the lid and MDM or other
+password policies still apply; this feature does not bypass them.
+
+Keep unlocked uses the same default duration setting as Keep awake (indefinite
+by default). Its state and expiry are saved separately and restored on launch.
+On battery, it receives the same escalating alerts, mentioning that the display
+is kept awake, and is released at the battery kill threshold.
+
 ## External sleep blockers
 
 The app applies these rules:
@@ -51,7 +67,7 @@ window, preventing a loop if a process repeatedly relaunches.
 
 ## Battery alerts and kill threshold
 
-While on battery with `caffeinate` or the app’s own keep-awake active, the core schedules an initial
+While on battery with `caffeinate`, Keep awake or Keep unlocked active, the core schedules an initial
 alert, immediate escalation when severity increases, and repeated alerts:
 
 | Battery level | Default repeat interval | Severity |
@@ -64,7 +80,7 @@ Alerts stop when external power returns or the blocker disappears. The core
 also stops scheduling when the battery percentage is unknown.
 
 At or below the default **15% kill threshold**, while on battery, eligible
-`caffeinate` processes are terminated and the app releases its own assertion.
+`caffeinate` processes are terminated and the app releases both of its own assertions.
 Other sleep blockers are ignored except for the optional informational menu listing. Settings controls the threshold and
 alert levels and intervals. Alerts are delivered through local notifications;
 macOS notification authorization must be allowed for them to appear.
@@ -112,7 +128,7 @@ the same volume and atomically replaces it, retaining a backup through validatio
 If installation fails, the app reports an error and restores the backup when
 replacement has started. The destination folder must be writable.
 
-The app saves and flushes its current keep-awake state before quitting. A helper
+The app saves and flushes its current Keep awake and Keep unlocked states before quitting. A helper
 waits for exit and reopens the installed app, which restores the saved state and
 expiry. Checks use GitHub's public API; installation downloads only the chosen
 release asset. There is no telemetry. See [PRIVACY.md](PRIVACY.md).

@@ -23,18 +23,36 @@ public struct SleepHandle: Equatable, Sendable {
     }
 }
 
+public enum SleepAssertionKind: Sendable {
+    case systemSleep
+    case displaySleep
+
+    public var assertionType: String {
+        switch self {
+        case .systemSleep: return kIOPMAssertPreventUserIdleSystemSleep
+        case .displaySleep: return kIOPMAssertPreventUserIdleDisplaySleep
+        }
+    }
+}
+
 public protocol SleepAssertionHolding: Sendable {
-    func create(name: String) -> SleepHandle?
+    func create(name: String, kind: SleepAssertionKind) -> SleepHandle?
     func release(_ handle: SleepHandle)
+}
+
+public extension SleepAssertionHolding {
+    func create(name: String) -> SleepHandle? {
+        create(name: name, kind: .systemSleep)
+    }
 }
 
 public struct IOKitSleepAssertionHolder: SleepAssertionHolding {
     public init() {}
 
-    public func create(name: String) -> SleepHandle? {
+    public func create(name: String, kind: SleepAssertionKind = .systemSleep) -> SleepHandle? {
         var assertionID: IOPMAssertionID = 0
         let status = IOPMAssertionCreateWithName(
-            kIOPMAssertPreventUserIdleSystemSleep as CFString,
+            kind.assertionType as CFString,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
             name as CFString,
             &assertionID

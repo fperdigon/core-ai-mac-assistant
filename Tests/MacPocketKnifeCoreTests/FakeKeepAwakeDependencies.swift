@@ -19,6 +19,7 @@ import MacPocketKnifeCore
 final class FakeSleepAssertionHolder: SleepAssertionHolding, @unchecked Sendable {
     private let lock = NSLock()
     private var names: [String] = []
+    private var kinds: [SleepAssertionKind] = []
     private var handles: [SleepHandle] = []
     private let failsCreation: Bool
 
@@ -27,11 +28,13 @@ final class FakeSleepAssertionHolder: SleepAssertionHolding, @unchecked Sendable
     }
 
     var createdNames: [String] { lock.withLock { names } }
+    var createdKinds: [SleepAssertionKind] { lock.withLock { kinds } }
     var releasedHandles: [SleepHandle] { lock.withLock { handles } }
 
-    func create(name: String) -> SleepHandle? {
+    func create(name: String, kind: SleepAssertionKind) -> SleepHandle? {
         lock.withLock {
             names.append(name)
+            kinds.append(kind)
             return failsCreation ? nil : SleepHandle(rawValue: UInt32(names.count))
         }
     }

@@ -34,9 +34,10 @@ public protocol KeepAwakeStateStore: Sendable {
 @MainActor
 public final class UserDefaultsKeepAwakeStateStore: KeepAwakeStateStore {
     private let defaults: UserDefaults
-    private let key = "keepAwakeState"
+    private let key: String
 
-    public init(defaults: UserDefaults) {
+    public init(defaults: UserDefaults, key: String = "keepAwakeState") {
+        self.key = key
         self.defaults = defaults
     }
 

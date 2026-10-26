@@ -37,7 +37,7 @@ public final class AssistantEngine {
     private let classifier: any ProcessClassifying
     private var policy: any PolicyEvaluating
     private var alerts: any AlertScheduling
-    private let controller: CaffeinateController
+    private let ownControllers: [CaffeinateController]
     private let notifier: CompositeNotifier
     private let terminator: any ProcessTerminating
     private let settings: any AssistantSettingsProviding
@@ -57,7 +57,8 @@ public final class AssistantEngine {
         classifier: any ProcessClassifying,
         policyEngine: any PolicyEvaluating = PolicyEngine(),
         alertScheduler: any AlertScheduling = AlertScheduler(),
-        caffeinateController: CaffeinateController, channels: [any AlertNotifying],
+        caffeinateController: CaffeinateController,
+        keepUnlockedController: CaffeinateController? = nil, channels: [any AlertNotifying],
         terminator: any ProcessTerminating, settings: any AssistantSettingsProviding,
         clock: any AssistantClock = SystemAssistantClock(),
         tickScheduler: any AssistantTickScheduling = AssistantTickScheduler(),
@@ -72,7 +73,7 @@ public final class AssistantEngine {
         self.classifier = classifier
         policy = policyEngine
         alerts = alertScheduler
-        controller = caffeinateController
+        ownControllers = [caffeinateController] + (keepUnlockedController.map { [$0] } ?? [])
         notifier = CompositeNotifier(channels: channels)
         self.terminator = terminator
         self.settings = settings
@@ -151,13 +152,16 @@ public final class AssistantEngine {
         batteryEstimate = batteryEstimator.currentEstimate()
         let now = clock.now
         var assertions = assertionProvider.currentAssertions().filter {
-            $0.pid != ownPID || $0.name != CaffeinateController.assertionName || controller.isActive
+            !isOwnAssertion($0) || isActiveOwnAssertion($0)
         }
-        if controller.isActive, !assertions.contains(where: isOwnAssertion) {
-            assertions.append(SleepAssertion(
-                pid: ownPID, processName: AppInfo.name, type: "PreventUserIdleSystemSleep",
-                name: CaffeinateController.assertionName
-            ))
+        for controller in ownControllers where controller.isActive {
+            let reported = assertions.contains { $0.pid == ownPID && $0.name == controller.name }
+            if !reported {
+                assertions.append(SleepAssertion(
+                    pid: ownPID, processName: AppInfo.name, type: controller.kind.assertionType,
+                    name: controller.name
+                ))
+            }
         }
         let classified = assertions.map { assertion in
             ClassifiedAssertion(
@@ -200,14 +204,14 @@ public final class AssistantEngine {
                     kind: .info, title: "Releasing keep-awake",
                     body: "Battery threshold reached. Releasing the app's sleep assertion."
                 ))
-                controller.deactivate()
+                for controller in ownControllers { controller.deactivate() }
                 await notifier.deliver(composer.compose(action: action))
             default:
                 await notifier.deliver(composer.compose(action: action))
             }
         }
         let remaining = assertions.filter {
-            !removedPIDs.contains($0.pid) && (!isOwnAssertion($0) || controller.isActive)
+            !removedPIDs.contains($0.pid) && (!isOwnAssertion($0) || isActiveOwnAssertion($0))
         }
         blockers = SleepBlockerSummary.names(
             assertions: remaining, ownPID: ownPID,
@@ -215,8 +219,13 @@ public final class AssistantEngine {
         )
         let watched = remaining.filter { $0.isCaffeinate || isOwnAssertion($0) }
         var alertBlockers = watched.contains { $0.isCaffeinate } ? ["caffeinate"] : []
-        if watched.contains(where: isOwnAssertion) {
+        let ownWatched = watched.filter(isOwnAssertion)
+        let displaySleepType = SleepAssertionKind.displaySleep.assertionType
+        if ownWatched.contains(where: { $0.type != displaySleepType }) {
             alertBlockers.append(SleepBlockerSummary.ownKeepAwakeName)
+        }
+        if ownWatched.contains(where: { $0.type == displaySleepType }) {
+            alertBlockers.append(SleepBlockerSummary.ownKeepUnlockedName)
         }
         if let alert = alerts.evaluate(power: power, blockerActive: !watched.isEmpty, now: now) {
             await notifier.deliver(composer.compose(
@@ -227,6 +236,10 @@ public final class AssistantEngine {
     }
 
     private func isOwnAssertion(_ assertion: SleepAssertion) -> Bool {
-        assertion.pid == ownPID && assertion.name == CaffeinateController.assertionName
+        assertion.pid == ownPID && ownControllers.contains { $0.name == assertion.name }
+    }
+
+    private func isActiveOwnAssertion(_ assertion: SleepAssertion) -> Bool {
+        assertion.pid == ownPID && ownControllers.contains { $0.name == assertion.name && $0.isActive }
     }
 }
