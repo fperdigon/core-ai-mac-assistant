@@ -41,6 +41,7 @@ bundle="$root/build/MacPocketKnife.app"
 rm -rf "$bundle"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 cp "$binary_dir/MacPocketKnife" "$bundle/Contents/MacOS/MacPocketKnife"
+cp Resources/AppIcon.icns "$bundle/Contents/Resources/AppIcon.icns"
 chmod 755 "$bundle/Contents/MacOS/MacPocketKnife"
 sed -e "s/@VERSION@/$version/g" -e "s/@GIT_SHA@/$build_sha/g" \
     -e "s/@BUILD_CHANNEL@/$build_channel/g" Resources/Info.plist > "$bundle/Contents/Info.plist"
