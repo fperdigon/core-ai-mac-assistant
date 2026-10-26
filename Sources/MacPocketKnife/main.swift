@@ -18,11 +18,8 @@ import MacPocketKnifeCore
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem?
-    private let controller = CaffeinateController()
-    private let unlockController = CaffeinateController(
-        name: CaffeinateController.keepUnlockedAssertionName, kind: .displaySleep,
-        stateStoreKey: CaffeinateController.keepUnlockedStateKey
-    )
+    private let controller = CaffeinateController.makeKeepAwake()
+    private let unlockController = CaffeinateController.makeKeepUnlocked()
     private let localNotifier = LocalNotifier()
     private let settings = SettingsModel(
         store: UserDefaultsSettingsStore(defaults: .standard), secrets: KeychainSecretStore()

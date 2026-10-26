@@ -22,6 +22,12 @@ public final class CaffeinateController {
     public static let keepUnlockedAssertionName = "MacPocketKnife keep-unlocked"
     public static let keepUnlockedStateKey = "keepUnlockedState"
 
+    public static func makeKeepAwake() -> CaffeinateController { CaffeinateController() }
+
+    public static func makeKeepUnlocked() -> CaffeinateController {
+        CaffeinateController(name: keepUnlockedAssertionName, kind: .displaySleep, stateStoreKey: keepUnlockedStateKey)
+    }
+
     public let name: String
     public let kind: SleepAssertionKind
 

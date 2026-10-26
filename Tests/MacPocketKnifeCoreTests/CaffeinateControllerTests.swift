@@ -33,6 +33,16 @@ private final class KeepAwakeEvents {
     var values: [Bool] = []
 }
 
+@Test @MainActor func convenienceControllersHaveExpectedNamesAndKinds() {
+    let keepAwake = CaffeinateController.makeKeepAwake()
+    #expect(keepAwake.name == CaffeinateController.assertionName)
+    #expect(keepAwake.kind == .systemSleep)
+
+    let keepUnlocked = CaffeinateController.makeKeepUnlocked()
+    #expect(keepUnlocked.name == CaffeinateController.keepUnlockedAssertionName)
+    #expect(keepUnlocked.kind == .displaySleep)
+}
+
 @Test @MainActor func keepAwakeActivatesIndefinitelyAndReleasesExactlyOnce() {
     let fixture = KeepAwakeFixture()
     let events = KeepAwakeEvents()
