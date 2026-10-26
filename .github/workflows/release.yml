@@ -91,6 +91,31 @@ jobs:
           } > notes.md
           gh release create "$GITHUB_REF_NAME" dist/*.dmg dist/*.sha256 \
             --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+      - name: Notify Homebrew tap
+        if: github.ref_type == 'tag'
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          if [ -z "$HOMEBREW_TAP_TOKEN" ]; then
+            echo '::notice::HOMEBREW_TAP_TOKEN is not set; the Homebrew tap will pick up this release on its daily run.'
+            exit 0
+          fi
+
+          version="${GITHUB_REF_NAME#v}"
+          response="$(GH_TOKEN="$HOMEBREW_TAP_TOKEN" gh api --include repos/fperdigon/homebrew-tap/dispatches \
+            -f event_type=macpocketknife-release -f "client_payload[version]=$version" 2>&1)"
+          result=$?
+          if [ "$result" -eq 0 ]; then
+            echo '::notice::Homebrew tap notified successfully.'
+            exit 0
+          fi
+
+          status="$(printf '%s\n' "$response" | sed -nE 's/^(HTTP\/[^ ]+ [0-9]{3}.*)$/\1/p' | head -n 1)"
+          if [ -z "$status" ]; then
+            status='HTTP status unavailable'
+          fi
+          echo "::warning::Homebrew tap dispatch failed ($status); the tap will pick up this release on its daily run."
+          exit 0
       - name: Publish nightly pre-release
         if: github.ref_type != 'tag'
         run: scripts/publish-nightly.sh
