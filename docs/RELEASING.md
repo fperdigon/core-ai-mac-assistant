@@ -19,8 +19,8 @@ limitations under the License.
 The app is a pure Swift package. Releases contain a universal Apple silicon and
 Intel app for macOS 13 or later in an **ad-hoc signed DMG, not notarized**.
 The entire bundle is sealed with an ad-hoc signature. No Apple Developer account,
-Developer ID certificate, notarization credentials, or repository secrets are
-required. GitHub supplies the workflow token with `contents: write`.
+Developer ID certificate, or notarization credentials are required to build and
+publish releases. GitHub supplies the workflow token with `contents: write`.
 
 ## Branches and versions
 
@@ -135,12 +135,20 @@ Gatekeeper globally.
 
 ## Homebrew tap
 
-The `fperdigon/homebrew-tap` repository bumps the cask daily to the newest stable
-release, reading the version and SHA-256 from its release asset. To trigger a
-bump manually:
+The release workflow notifies `fperdigon/homebrew-tap` as soon as a stable
+release is published. Configure the repository secret `HOMEBREW_TAP_TOKEN` with
+a fine-grained token limited to `fperdigon/homebrew-tap` and **Contents: read and
+write**. If the secret is not configured or dispatch fails, the tap's daily run
+will pick up the release as a fallback. The daily run also remains the fallback
+for any missed notification.
+
+To test the notification without publishing a release, run:
 
 ```sh
-gh workflow run bump.yml -R fperdigon/homebrew-tap
+gh workflow run notify-tap.yml -R fperdigon/macpocketknife
 ```
 
-Nightlies are never published to the tap.
+You can optionally pass a version with `-f version=0.1.0`; omitting it sends an
+empty version for testing the dispatch link. Keep the token's expiration date in
+mind and renew the repository secret before it expires. Nightlies are never
+published to the tap.
