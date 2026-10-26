@@ -17,6 +17,7 @@ import Foundation
 @MainActor
 public final class CaffeinateController {
     public static let assertionName = "MacPocketKnife keep-awake"
+    public static let keepAwakeStateKey = "keepAwakeState"
 
     public static let keepUnlockedAssertionName = "MacPocketKnife keep-unlocked"
     public static let keepUnlockedStateKey = "keepUnlockedState"
@@ -40,14 +41,17 @@ public final class CaffeinateController {
         holder: any SleepAssertionHolding = IOKitSleepAssertionHolder(),
         scheduler: any KeepAwakeScheduling = KeepAwakeScheduler(),
         store: (any KeepAwakeStateStore)? = nil,
-        name: String = CaffeinateController.assertionName,
+        name: String? = nil,
         kind: SleepAssertionKind = .systemSleep,
-        stateStoreKey: String = "keepAwakeState"
+        stateStoreKey: String? = nil
     ) {
         self.holder = holder
         self.scheduler = scheduler
-        self.store = store ?? UserDefaultsKeepAwakeStateStore(defaults: .standard, key: stateStoreKey)
-        self.name = name
+        self.store = store ?? UserDefaultsKeepAwakeStateStore(
+            defaults: .standard,
+            key: stateStoreKey ?? CaffeinateController.keepAwakeStateKey
+        )
+        self.name = name ?? Self.assertionName
         self.kind = kind
     }
 
