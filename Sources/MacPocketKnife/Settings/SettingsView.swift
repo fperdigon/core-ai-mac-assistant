@@ -155,11 +155,33 @@ private struct GeneralPane: View {
     var body: some View {
         Form {
             generalSection
+            dictationSection
             if let status { Text(status).font(.callout).accessibilityLabel(status) }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .scrollDisabled(true)
+    }
+
+    private var dictationSection: some View {
+        Section("Dictation") {
+            Toggle("Enable global shortcut (Control-Option-Command)", isOn: $model.settings.dictationHotkeyEnabled)
+            Picker("Shortcut key", selection: $model.settings.dictationHotkeyKey) {
+                ForEach(AppSettings.dictationKeys, id: \.self) { key in Text(key).tag(key) }
+            }
+            .disabled(!model.settings.dictationHotkeyEnabled)
+            Picker("Dictation language", selection: $model.dictationLanguageSelection) {
+                Text("System default").tag("")
+                ForEach(AppleSpeechTranscriber.offlineLocales, id: \.self) { identifier in
+                    Text(Locale(identifier: "en").localizedString(forIdentifier: identifier) ?? identifier).tag(identifier)
+                }
+            }
+            if let error = model.dictationHotkeyError {
+                Text(error).font(.caption).foregroundStyle(.red)
+            }
+            Text("Speech is processed on device. Microphone and speech recognition access are requested on first use. Text is copied to the clipboard.")
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var generalSection: some View {

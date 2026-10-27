@@ -40,6 +40,13 @@ public final class SettingsModel: ObservableObject {
         }
     }
 
+    @Published public var dictationHotkeyError: String?
+
+    public var dictationLanguageSelection: String {
+        get { settings.dictationLanguage ?? "" }
+        set { settings.dictationLanguage = newValue.isEmpty ? nil : newValue }
+    }
+
     @Published public private(set) var launchAtLoginStatus: String?
 
     // Computed properties let SwiftUI use key-path bindings without converting

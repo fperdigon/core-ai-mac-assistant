@@ -50,6 +50,42 @@ by default). Its state and expiry are saved separately and restored on launch.
 On battery, it receives the same escalating alerts, mentioning that the display
 is kept awake, and is released at the battery kill threshold.
 
+## Dictation
+
+Choose **Dictate** below **Keep unlocked**, or press **Control-Option-Command-T**,
+to start recording from the default microphone and transcribing live. A red dot
+appears beside the menu bar icon while recording. Choose **Stop dictation** or
+press the shortcut again to stop and copy the transcript. Paste with **Command-V**.
+A local notification confirms the copy with a word count. Empty dictation leaves
+the clipboard unchanged and shows “No speech detected”. Recording stops and copies
+automatically after ten minutes. Audio or recognition errors discard the session.
+Toggling again while permission requests are pending cancels startup.
+
+In **Settings > General > Dictation**, enable or disable the global shortcut and
+choose its letter (A–Z). Control, Option and Command are fixed modifiers. A shortcut
+conflict is shown in settings and a local notice; choose another letter. Shortcuts
+use the physical ANSI letter-key positions and require no Accessibility permission.
+
+**Dictation language** defaults to the current system locale. The language picker
+also lists locales supported by Apple's on-device speech recognizer. All app labels
+remain in English. Enable offline dictation for the chosen language in **System
+Settings > Keyboard > Dictation**, allowing any language download to finish. If
+on-device recognition is unavailable, the app stays idle and explains this step;
+it never falls back to server recognition.
+
+The first use requests **Microphone** and **Speech Recognition** permissions.
+If denied, allow MacPocketKnife under **System Settings > Privacy & Security >
+Microphone / Speech Recognition**, then retry. Error guidance also appears in the
+menu and opens Privacy settings when clicked. A working default audio input is
+required; change it under **System Settings > Sound** if needed.
+
+Apple's Speech framework processes speech on device. MacPocketKnife does not save
+or log audio or transcripts, and sends no dictation data anywhere. Recognition uses
+memory only during the session. Only the final text goes to the general clipboard;
+notifications contain only a word count. Clipboard managers and Universal Clipboard
+may retain or sync that text outside the app. Replace or clear your clipboard when
+finished if the text is sensitive.
+
 ## External sleep blockers
 
 The app applies these rules:

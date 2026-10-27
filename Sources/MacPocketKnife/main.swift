@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import AppKit
+import Combine
 import MacPocketKnifeCore
 
 @MainActor
@@ -45,12 +46,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             defaults.synchronize()
         }
     )
+    private lazy var dictation = DictationController.make(
+        speech: AppleSpeechTranscriber(), pasteboard: SystemPasteboard(), notices: localNotifier
+    )
+    private lazy var hotkey = GlobalHotkey()
+    private var settingsSubscription: AnyCancellable?
+    private var hotkeyPreferences: String?
     private var engine: AssistantEngine?
     private var settingsWindow: SettingsWindowController?
     private let statusLine = NSMenuItem(title: "Reading power state…", action: nil, keyEquivalent: "")
     private let blockersLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let keepAwake = NSMenuItem(title: "Keep awake", action: nil, keyEquivalent: "")
     private let keepUnlocked = NSMenuItem(title: "Keep unlocked", action: nil, keyEquivalent: "")
+    private let dictate = NSMenuItem(title: "Dictate", action: nil, keyEquivalent: "")
+    private let dictationStatus = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let authorization = NSMenuItem(title: "Notifications: checking…", action: nil, keyEquivalent: "")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -87,6 +96,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         keepUnlocked.action = #selector(toggleKeepUnlocked)
         keepUnlocked.toolTip = "Keeps the display awake so the Mac does not lock from inactivity. Manual lock (Ctrl-Cmd-Q), closing the lid and password policies still apply."
         menu.addItem(keepUnlocked)
+        dictate.target = self
+        dictate.action = #selector(toggleDictation)
+        menu.addItem(dictate)
+        dictationStatus.target = self
+        dictationStatus.action = #selector(openDictationPrivacy)
+        dictationStatus.isHidden = true
+        menu.addItem(dictationStatus)
         authorization.isEnabled = false
         menu.addItem(authorization)
         menu.addItem(.separator())
@@ -103,6 +119,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         item.menu = menu
         statusItem = item
 
+        dictation.onChange = { [weak self] in self?.refreshStatus() }
+        hotkey.action = { [weak self] in self?.toggleDictation() }
+        settingsSubscription = settings.$settings.sink { [weak self] value in
+            self?.configureHotkey(value)
+        }
         self.engine = engine
         engine.onChange = { [weak self] in self?.refreshStatus() }
         controller.restoreIfNeeded()
@@ -130,6 +151,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        dictation.discard()
+        hotkey.shutdown()
         engine?.stop()
     }
 
@@ -145,6 +168,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         blockersLine.isHidden = blockers == nil
         keepAwake.state = controller.isActive ? .on : .off
         keepUnlocked.state = unlockController.isActive ? .on : .off
+        let recording = dictation.state == .recording
+        let active = recording || dictation.state == .starting
+        let label = active ? "Stop dictation" : "Dictate"
+        let shortcut = settings.settings.dictationHotkeyEnabled ? " (⌃⌥⌘\(settings.settings.dictationHotkeyKey))" : ""
+        dictate.title = label + shortcut
+        dictate.state = active ? .on : .off
+        dictate.toolTip = recording ? "\(dictation.wordCount) words transcribed" : "Transcribe speech on this Mac and copy it to the clipboard."
+        statusItem?.length = recording ? NSStatusItem.variableLength : NSStatusItem.squareLength
+        statusItem?.button?.attributedTitle = NSAttributedString(
+            string: recording ? " ●" : "", attributes: [.foregroundColor: NSColor.systemRed]
+        )
+        statusItem?.button?.imagePosition = .imageLeading
+        let error = dictation.lastError ?? settings.dictationHotkeyError
+        dictationStatus.title = error ?? ""
+        dictationStatus.isHidden = error == nil
     }
 
     private func updateAuthorization(_ state: AuthorizationState) {
@@ -175,6 +213,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             unlockController.deactivate()
         } else {
             unlockController.activate(duration: settings.settings.keepAwakeDefaultDuration)
+        }
+    }
+
+    private func configureHotkey(_ value: AppSettings) {
+        let signature = "\(value.dictationHotkeyEnabled)-\(value.dictationHotkeyKey)"
+        guard signature != hotkeyPreferences else { return }
+        hotkeyPreferences = signature
+        let registered = hotkey.register(enabled: value.dictationHotkeyEnabled, key: value.dictationHotkeyKey)
+        settings.dictationHotkeyError = registered ? nil : "Dictation shortcut is unavailable. Choose another key in Settings > General > Dictation."
+        if let message = settings.dictationHotkeyError {
+            Task { await localNotifier.deliver(Notice(kind: .info, title: "Dictation shortcut unavailable", body: message)) }
+        }
+        // Published settings arrive before the stored value changes.
+        Task { @MainActor [weak self] in self?.refreshStatus() }
+    }
+
+    @objc private func toggleDictation() {
+        let locale: Locale
+        if let identifier = settings.settings.dictationLanguage {
+            locale = Locale(identifier: identifier)
+        } else {
+            locale = Locale.current
+        }
+        dictation.toggle(locale: locale)
+    }
+
+    @objc private func openDictationPrivacy() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy") {
+            NSWorkspace.shared.open(url)
         }
     }
 

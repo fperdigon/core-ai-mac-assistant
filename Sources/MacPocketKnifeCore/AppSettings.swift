@@ -41,6 +41,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var showOtherSleepBlockers: Bool
     public var updateChannel: UpdateChannel
     public var checkForUpdatesAutomatically: Bool
+    public var dictationHotkeyEnabled: Bool = true
+    public var dictationHotkeyKey: String = "T"
+    public var dictationLanguage: String?
     public var skippedVersion: String?
 
     public init(
@@ -61,7 +64,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.skippedVersion = skippedVersion
     }
 
+    public static let dictationKeys = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(String.init)
+
     private enum CodingKeys: String, CodingKey {
+        case dictationHotkeyEnabled, dictationHotkeyKey, dictationLanguage
         case alerts, policy, keepAwakeDefaultDuration, telegram, launchAtLogin
         case updateChannel, checkForUpdatesAutomatically, skippedVersion, showOtherSleepBlockers
     }
@@ -77,6 +83,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         showOtherSleepBlockers = try container.decodeIfPresent(Bool.self, forKey: .showOtherSleepBlockers) ?? false
         updateChannel = try container.decodeIfPresent(UpdateChannel.self, forKey: .updateChannel) ?? .stable
         checkForUpdatesAutomatically = try container.decodeIfPresent(Bool.self, forKey: .checkForUpdatesAutomatically) ?? true
+        dictationHotkeyEnabled = try container.decodeIfPresent(Bool.self, forKey: .dictationHotkeyEnabled) ?? true
+        dictationHotkeyKey = try container.decodeIfPresent(String.self, forKey: .dictationHotkeyKey) ?? "T"
+        dictationLanguage = try container.decodeIfPresent(String.self, forKey: .dictationLanguage)
         skippedVersion = try container.decodeIfPresent(String.self, forKey: .skippedVersion)
     }
 
@@ -102,6 +111,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         if let duration = keepAwakeDefaultDuration {
             result.keepAwakeDefaultDuration = duration.isFinite ? max(10, duration) : nil
         }
+        let key = dictationHotkeyKey.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        result.dictationHotkeyKey = Self.dictationKeys.contains(key) ? key : "T"
         return result
     }
 }
