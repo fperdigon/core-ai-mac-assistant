@@ -54,8 +54,9 @@ run_transcribe() {
   return $code
 }
 
-# CI only: the hosted runner is a disposable VM with SIP disabled, so the speech
-# permission is granted in its own TCC database. Never used on a developer machine.
+# CI only (this and enable_dictation_on_runner): the hosted runner is a disposable
+# VM with SIP disabled, so the speech permission is granted in its own TCC database.
+# Never used on a developer machine.
 grant_speech_on_runner() {
   local db="$HOME/Library/Application Support/com.apple.TCC/TCC.db"
   local sql="INSERT OR REPLACE INTO access(service,client,client_type,auth_value,auth_reason,auth_version,flags,last_modified) VALUES('kTCCServiceSpeechRecognition','$bundle_id',0,2,4,1,0,strftime('%s','now'));"
@@ -69,6 +70,22 @@ grant_speech_on_runner() {
   fi
   killall tccd 2>/dev/null
   sleep 2
+}
+
+# CI only: the runner has Siri and Dictation disabled (kLSRErrorDomain 201), so turn
+# Dictation on for the throwaway runner user. Never used on a developer machine.
+enable_dictation_on_runner() {
+  echo "enabling Dictation for user $(id -un) on this disposable runner"
+  defaults write com.apple.assistant.support "Dictation Enabled" -bool true || true
+  defaults write com.apple.assistant.support "Assistant Enabled" -bool true || true
+  defaults write com.apple.speech.recognition.AppleSpeechRecognition.prefs DictationIMMasterDictationEnabled -bool true || true
+  defaults write com.apple.HIToolbox AppleDictationAutoEnable -bool true || true
+  defaults read com.apple.assistant.support "Dictation Enabled" 2>&1 || true
+  defaults read com.apple.assistant.support "Assistant Enabled" 2>&1 || true
+  defaults read com.apple.speech.recognition.AppleSpeechRecognition.prefs DictationIMMasterDictationEnabled 2>&1 || true
+  defaults read com.apple.HIToolbox AppleDictationAutoEnable 2>&1 || true
+  killall -u "$(id -un)" assistantd corespeechd speechd siriknowledged 2>/dev/null || true
+  sleep 3
 }
 
 transcript_of() { sed -n 's/^TRANSCRIPT: //p' "$work/$1.out" | tail -1; }
@@ -95,8 +112,9 @@ echo "== en-US"
 run_transcribe en en-US Tests/Fixtures/Speech/dictation-en.m4a
 code=$?
 if [ $code -ne 0 ] && $ci; then
-  echo "first attempt failed (exit $code); retrying after granting the permission"
+  echo "first attempt failed (exit $code); retrying after granting the permission and enabling Dictation"
   grant_speech_on_runner
+  enable_dictation_on_runner
   run_transcribe en en-US Tests/Fixtures/Speech/dictation-en.m4a
   code=$?
 fi

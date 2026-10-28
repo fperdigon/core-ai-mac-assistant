@@ -43,7 +43,8 @@ Run `scripts/run-speech-test.sh` to feed the synthetic clips in
 The first run shows the macOS Speech Recognition prompt once. The Spanish case needs
 offline Spanish dictation (System Settings > Keyboard > Dictation); without it the
 case is skipped with a hint. In CI only English runs, because the runner has no
-offline Spanish model. The test exercises the recognizer on synthetic audio and does
+offline Spanish model. CI turns on Dictation for the throwaway runner user because
+the runner has it disabled. The test exercises the recognizer on synthetic audio and does
 not cover the microphone, hotkey or clipboard path.
 
 ## Code style and tests
