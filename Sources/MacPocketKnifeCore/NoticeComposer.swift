@@ -45,6 +45,21 @@ public struct NoticeComposer: NoticeComposing {
         )
     }
 
+    /// Keep recognized text out of notifications and their persistent history.
+    public func composeDictation(wordCount: Int) -> Notice {
+        if wordCount == 0 {
+            return Notice(kind: .info, title: "No speech detected", body: "The clipboard was left unchanged.")
+        }
+        return Notice(
+            kind: .info, title: "Dictation copied to the clipboard",
+            body: "\(wordCount) words. Paste with Command-V."
+        )
+    }
+
+    public func composeDictation(failure: DictationFailure) -> Notice {
+        Notice(kind: .info, title: "Dictation unavailable", body: failure.message)
+    }
+
     /// Compose termination notices only after the corresponding action succeeds.
     public func compose(action: PolicyAction) -> Notice {
         switch action {

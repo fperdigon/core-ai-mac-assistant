@@ -37,6 +37,10 @@ limitations under the License.
     <string>@GIT_SHA@</string>
     <key>CAMBuildChannel</key>
     <string>@BUILD_CHANNEL@</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>MacPocketKnife uses your microphone only while you dictate, to transcribe speech on this Mac.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>MacPocketKnife uses on-device speech recognition to turn dictation into text for your clipboard.</string>
     <key>LSUIElement</key>
     <true/>
     <key>LSMinimumSystemVersion</key>

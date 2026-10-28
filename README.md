@@ -14,6 +14,8 @@ Battery alerts escalate by severity and can be delivered through macOS local
 notifications or optional Telegram. Settings are available in tabs, and updates
 can be checked and installed in the app.
 
+- **Dictation:** on-device voice-to-text from the default microphone, toggled from the menu or Control-Option-Command-T, with the transcript copied to the clipboard.
+
 ## Protection rules
 
 The app applies these protection rules:

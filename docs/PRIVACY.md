@@ -5,6 +5,27 @@ tool, a battery guard for forgotten `caffeinate` processes and other sleep
 blockers, is designed to work offline with local notifications.
 There is no telemetry, analytics, advertising, or remote crash reporting.
 
+## Dictation
+
+Dictation uses only Apple's Speech framework and AVAudioEngine with the default
+microphone. Every recognition request requires on-device recognition. If the chosen
+locale cannot support it, recording does not start; there is no server fallback.
+Enable offline dictation for the language in System Settings > Keyboard > Dictation.
+Apple's Speech framework performs the processing on device. The app sends no audio
+or transcript anywhere, including to Telegram.
+
+Microphone and speech-recognition permission prompts appear only on first use.
+Permissions can be managed in System Settings > Privacy & Security. The global
+shortcut uses Carbon hotkey registration and needs no Accessibility permission.
+
+Audio and recognition text exist only in memory during a session and are never
+saved or logged by the app. Successful dictation writes the final text to the
+general clipboard. Copy notifications contain a word count, not transcript text.
+Clipboard managers and Universal Clipboard may retain or sync clipboard text;
+those services are outside this app's control. Empty sessions leave the clipboard
+unchanged; errors discard the session. Recording is limited to ten minutes.
+Only dictation preferences (shortcut and language) are stored in UserDefaults.
+
 ## Local storage
 
 The Telegram bot token belongs only in the macOS Keychain, as a generic-password
