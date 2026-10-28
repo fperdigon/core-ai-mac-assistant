@@ -124,3 +124,11 @@ jobs:
         with:
           name: xcodebuild-log
           path: xcodebuild.log
+
+  speech-test:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Speech recognition test
+        run: scripts/run-speech-test.sh --ci

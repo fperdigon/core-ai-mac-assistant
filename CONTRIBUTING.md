@@ -36,6 +36,16 @@ a runner without a controlling terminal, as on macOS CI. Each test scopes assert
 listings to its own processes and tears down its children and sleep assertions.
 Bounded OS-readiness polling does not drive policy time.
 
+## Speech tests
+
+Run `scripts/run-speech-test.sh` to feed the synthetic clips in
+`Tests/Fixtures/Speech` to Apple's on-device recognizer and check the transcripts.
+The first run shows the macOS Speech Recognition prompt once. The Spanish case needs
+offline Spanish dictation (System Settings > Keyboard > Dictation); without it the
+case is skipped with a hint. In CI only English runs, because the runner has no
+offline Spanish model. The test exercises the recognizer on synthetic audio and does
+not cover the microphone, hotkey or clipboard path.
+
 ## Code style and tests
 
 Follow nearby sources: four-space indentation, Swift naming conventions,
